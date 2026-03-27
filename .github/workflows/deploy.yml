@@ -54,6 +54,7 @@ jobs:
           set -euo pipefail
           test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
           ssh-keyscan -T 30 -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          nc -vz "$SSH_HOST" 22
 
       - name: Deploy on EC2
         env:
