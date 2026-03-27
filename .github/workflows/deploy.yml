@@ -38,12 +38,28 @@ jobs:
         run: docker push $IMAGE_URI
 
       - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
+          set -euo pipefail
+
+          test -n "$SSH_PRIVATE_KEY" || { echo "SSH_PRIVATE_KEY secret is missing"; exit 1; }
+          test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
+
           mkdir -p ~/.ssh
-          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -T 30 -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'bash ~/deploy/nb07-welive-team4/deploy.sh'
+          set -euo pipefail
+
+          test -n "$SSH_USER" || { echo "SSH_USER secret is missing"; exit 1; }
+          test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
+
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'bash ~/deploy/nb07-welive-team4/deploy.sh'
