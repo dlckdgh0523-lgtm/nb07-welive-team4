@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import type { Request, Response, NextFunction } from "express";
-=======
 import { Request, Response, NextFunction } from "express";
->>>>>>> Stashed changes
 import * as apartmentService from "../services/apartment.service";
 import {
   validateApartmentPublicQuery,
@@ -31,12 +27,7 @@ export const getApartmentPublicById = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-<<<<<<< Updated upstream
-    const id = req.params["id"];
-    if (!id) { res.status(400).json({ message: "id가 필요합니다." }); return; }
-=======
     const { id } = req.params;
->>>>>>> Stashed changes
     const result = await apartmentService.getApartmentPublicById(id);
     res.status(200).json(result);
   } catch (err) {
@@ -66,12 +57,7 @@ export const getApartmentById = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-<<<<<<< Updated upstream
-    const id = req.params["id"];
-    if (!id) { res.status(400).json({ message: "id가 필요합니다." }); return; }
-=======
     const { id } = req.params;
->>>>>>> Stashed changes
     const result = await apartmentService.getApartmentById(id);
     res.status(200).json(result);
   } catch (err) {

@@ -64,11 +64,6 @@ export interface ApartmentAdminQuery {
   address?: string;
   searchKeyword?: string;
   apartmentStatus?: ApartmentStatus;
-<<<<<<< Updated upstream
-  page?: number;
-  limit?: number;
-=======
   page?: string;
   limit?: string;
->>>>>>> Stashed changes
 }

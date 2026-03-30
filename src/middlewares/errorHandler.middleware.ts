@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import type { Request, Response, NextFunction } from "express";
-=======
 import { Request, Response, NextFunction } from "express";
->>>>>>> Stashed changes
 import { AppError } from "../errors/AppError";
 
 export const errorHandler = (
@@ -20,16 +16,6 @@ export const errorHandler = (
     return;
   }
 
-<<<<<<< Updated upstream
-  const prismaErr = err as any;
-  if (prismaErr.code === "P2002") {
-    res.status(409).json({ success: false, code: "CONFLICT", message: "이미 존재하는 데이터입니다." });
-    return;
-  }
-  if (prismaErr.code === "P2025") {
-    res.status(404).json({ success: false, code: "NOT_FOUND", message: "데이터를 찾을 수 없습니다." });
-    return;
-=======
   // Prisma 에러 처리
   if (err.constructor.name === "PrismaClientKnownRequestError") {
     const prismaErr = err as any;
@@ -41,7 +27,6 @@ export const errorHandler = (
       res.status(404).json({ success: false, code: "NOT_FOUND", message: "데이터를 찾을 수 없습니다." });
       return;
     }
->>>>>>> Stashed changes
   }
 
   console.error("[Server Error]", err);

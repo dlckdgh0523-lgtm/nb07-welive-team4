@@ -3,16 +3,6 @@ export interface PaginationOptions {
   limit: number;
 }
 
-<<<<<<< Updated upstream
-export const parsePagination = (
-  page: number | undefined,
-  limit: number | undefined,
-  defaultLimit = 10
-): PaginationOptions => {
-  return {
-    page: Math.max(1, page ?? 1),
-    limit: Math.max(1, limit ?? defaultLimit),
-=======
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -40,7 +30,6 @@ export const getPaginationMeta = (
     limit: options.limit,
     totalCount,
     totalPages: Math.ceil(totalCount / options.limit),
->>>>>>> Stashed changes
   };
 };
 
