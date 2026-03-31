@@ -1,15 +1,13 @@
-name: CI for develop
+name: PR Check
 
 on:
-  push:
-    branches:
-      - develop
   pull_request:
     branches:
+      - develop
       - main
 
 jobs:
-  test-build:
+  docker-health-check:
     runs-on: ubuntu-latest
 
     steps:
