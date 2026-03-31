@@ -1,6 +1,7 @@
-import express, { Request, Response } from "express";
+import express from "express";
+import type { Request, Response } from "express";
 import cors from "cors";
-import { getEnv } from "./config/env";
+import { getEnv } from "./config/env.js";
 
 const env = getEnv();
 const app = express();

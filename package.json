@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/server.js",
+  "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node src/server.ts",
+    "dev": "ts-node --esm src/server.ts",
     "start": "node dist/server.js"
   },
   "repository": {
@@ -15,20 +16,28 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/nb07-welive-team4/nb07-welive-team4/issues"
   },
   "homepage": "https://github.com/nb07-welive-team4/nb07-welive-team4#readme",
   "dependencies": {
+    "@prisma/client": "^7.5.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "struct": "^0.0.12",
+    "superstruct": "^2.0.2"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.1",
+    "@types/express": "^5.0.6",
     "@types/node": "^24.0.0",
+    "@types/struct": "^0.0.8",
+    "nodemon": "^3.1.14",
+    "prisma": "^7.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.0"
+    "typescript": "^6.0.2"
   }
 }

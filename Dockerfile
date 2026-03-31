@@ -5,7 +5,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-COPY . .
+COPY tsconfig.json ./
+COPY src ./src
+
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -21,4 +23,4 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/src/server.js"]
+CMD ["node", "dist/server.js"]
