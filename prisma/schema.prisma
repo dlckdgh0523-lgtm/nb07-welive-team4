@@ -4,8 +4,7 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -25,10 +24,13 @@ enum JoinStatus {
 }
 
 model User {
-  id                Int      @id @default(autoincrement())
+  id                String   @id @default(uuid())
   email             String   @unique
+  username          String   @unique
+  contact           String   @unique
   password          String
-  name              String?
+  name              String
+  avatar            String?
   role              Role     @default(USER)
   // 승인상태
   joinStatus        JoinStatus @default(PENDING)
@@ -38,7 +40,7 @@ model User {
 
   // 일반 유저용 정보
   apartmentName     String?
-  apartmentDong     String?
+  apartmentDong     String? 
   apartmentHo       String?
 
   // 자신이 관리하는 아파트(Admin 전용)
@@ -46,14 +48,28 @@ model User {
 
   // 자신이 거주하는 아파트(User 전용)
   residenceApartment Apartment? @relation("ApartmentResidents", fields: [residentApartmentId], references: [id])
-  residentApartmentId Int?
+  residentApartmentId String?
 
+  refreshTokens RefreshToken[]
   complaints Complaint[] @relation("UserComplaints")
   polls      Poll[]      @relation("UserPolls")
   notices    Notice[]    @relation("UserNotices")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device    String?
+  ip        String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 enum ApartMentStatus {
@@ -63,7 +79,7 @@ enum ApartMentStatus {
 }
 
 model Apartment {
-  id                  Int @id @default(autoincrement())
+  id                  String   @id @default(uuid())
   name                String
   address             String
   officeNumber        String
@@ -80,10 +96,13 @@ model Apartment {
 
   // 관리자 관계 (1:1)
   admin              User     @relation("ApartmentAdmin", fields: [adminId], references: [id])
-  adminId            Int      @unique 
+  adminId            String   @unique 
 
   // 거주자 관계 (1:N)
   residents          User[]   @relation("ApartmentResidents")
+
+  // 아파트 게시판 관계
+  boards             Board[]
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -91,7 +110,7 @@ model Apartment {
 
 enum BoardType {
   NOTICE
-  POOL
+  POLL
   COMPLAINT
 }
 
@@ -101,6 +120,9 @@ model Board {
   type        BoardType
 
   // 관계 설정
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id])
+
   complaints  Complaint[]
   polls       Poll[]
   notices     Notice[]
@@ -119,14 +141,14 @@ model Complaint {
   boardId     String
   board       Board    @relation(fields: [boardId], references: [id])
 
-  authorId    Int
+  authorId    String
   author      User     @relation("UserComplaints", fields: [authorId], references: [id])
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-enum PoolStatus {
+enum PollStatus {
   PENDING
   IN_PROGRESS
   CLOSED
@@ -134,7 +156,7 @@ enum PoolStatus {
 
 model Poll {
   id                  String      @id @default(uuid())
-  status              PoolStatus  @default(PENDING)
+  status              PollStatus  @default(PENDING)
   title               String
   content             String
   buildingPermission  Int         @default(0)
@@ -144,7 +166,7 @@ model Poll {
   // 관계 설정
   boardId             String
   board               Board       @relation(fields: [boardId], references: [id])
-  authorId            Int
+  authorId            String
   author              User        @relation("UserPolls", fields: [authorId], references: [id])
 
   options             PollOption[]
@@ -185,7 +207,7 @@ model Notice {
   // 관계 설정
   boardId     String
   board       Board    @relation(fields: [boardId], references: [id])
-  authorId    Int
+  authorId    String
   author      User     @relation("UserNotices", fields: [authorId], references: [id])
 
   createdAt   DateTime @default(now())

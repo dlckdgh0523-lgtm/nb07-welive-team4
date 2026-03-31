@@ -1,7 +1,9 @@
 import express from "express";
 import type { Request, Response } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { getEnv } from "./config/env.js";
+import authRouter from "./routes/auth.route.js";
 
 const env = getEnv();
 const app = express();
@@ -9,10 +11,11 @@ const app = express();
 app.use(
   cors({
     origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
-  })
+  }),
 );
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({
@@ -29,6 +32,8 @@ app.get("/api/ping", (_req: Request, res: Response) => {
     success: true,
   });
 });
+
+app.use("/api/auth", authRouter);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
