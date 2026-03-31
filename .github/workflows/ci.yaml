@@ -1,0 +1,36 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  docker-health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build Docker image
+        run: docker build -t advanced-backend .
+
+      - name: Run container
+        run: docker run -d --name advanced-backend -p 3000:3000 advanced-backend
+
+      - name: Wait and check health
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs advanced-backend
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f advanced-backend || true

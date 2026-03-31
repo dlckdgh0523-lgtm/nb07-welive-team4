@@ -61,6 +61,19 @@ jobs:
           test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
           ssh-keyscan -T 30 -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
+      - name: Sync deploy files to EC2
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_USER" || { echo "SSH_USER secret is missing"; exit 1; }
+          test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
+
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'mkdir -p ~/deploy/nb07-welive-team4'
+          scp -i ~/.ssh/id_rsa compose.yaml deploy.sh "$SSH_USER@$SSH_HOST:~/deploy/nb07-welive-team4/"
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'chmod +x ~/deploy/nb07-welive-team4/deploy.sh'
+
       - name: Deploy on EC2
         env:
           SSH_USER: ${{ secrets.SSH_USER }}

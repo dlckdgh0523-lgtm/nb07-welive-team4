@@ -1,14 +1,9 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: 022038146145.dkr.ecr.ap-northeast-2.amazonaws.com/nb07-welive-team4:latest
     container_name: advanced-backend
     ports:
       - "3000:3000"
     env_file:
       - .env
     restart: unless-stopped
-    volumes:
-      - .:/app
-    command: npm run start
