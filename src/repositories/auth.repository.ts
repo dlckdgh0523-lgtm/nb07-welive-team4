@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, JoinStatus } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { CreateUserDTO } from "../types/auth.type";
 
@@ -109,5 +109,18 @@ export class AuthRepo {
     });
 
     return result.count > 0;
+  };
+
+  findById = async (id: string) => {
+    return await prisma.user.findUnique({
+      where: { id },
+    });
+  };
+
+  updateAdminStatus = async (adminId: string, status: JoinStatus) => {
+    await prisma.user.update({
+      where: { id: adminId },
+      data: { joinStatus: status },
+    });
   };
 }

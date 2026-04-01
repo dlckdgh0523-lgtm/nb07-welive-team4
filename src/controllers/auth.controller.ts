@@ -1,8 +1,15 @@
 import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 import { create } from "superstruct";
-import { AdminStruct, LoginStruct, SuperAdminStruct, UserId, UserStruct } from "../structs/auth.struct";
-import { UnauthorizedError } from "../errors/errors";
+import {
+  AdminStruct,
+  LoginStruct,
+  SuperAdminStruct,
+  UpdateAdminStatusStruct,
+  UserStruct,
+  AdminId,
+} from "../structs/auth.struct";
+import { ForbiddenError, UnauthorizedError } from "../errors/errors";
 
 export class AuthController {
   private authService = new AuthService();
@@ -97,5 +104,18 @@ export class AuthController {
     await this.authService.logout(userId, refreshToken);
 
     res.status(204).end();
+  };
+
+  updateAdminStatus = async (req: Request, res: Response) => {
+    const role = req.user.role;
+    if (role !== "SUPER_ADMIN") {
+      throw new ForbiddenError("권한이 없습니다.");
+    }
+
+    const { adminId } = create(req.params, AdminId);
+    const { status } = create(req.body, UpdateAdminStatusStruct);
+    await this.authService.updateAdminStatus(adminId, status);
+
+    res.status(200).json({ message: "작업이 성공적으로 완료되었습니다." });
   };
 }

@@ -3,7 +3,8 @@ import type { Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { getEnv } from "./config/env.js";
-import authRouter from "./routes/auth.route.js";
+import authRouter from "./routes/auth.route";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const env = getEnv();
 const app = express();
@@ -34,6 +35,9 @@ app.get("/api/ping", (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRouter);
+
+// 전역 에러 핸들러
+app.use(errorHandler);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({

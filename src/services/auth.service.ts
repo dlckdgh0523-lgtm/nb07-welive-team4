@@ -1,12 +1,13 @@
 import { createUser, createAdmin, createSuperAdmin, loginData } from "../structs/auth.struct";
 import { AuthRepo } from "../repositories/auth.repository";
 import { ApartRepo } from "../repositories/apart.repository";
-import { NotFoundError, UnauthorizedError } from "../errors/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../errors/errors";
 import { LoginResponseDto } from "../models/auth.model";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { verifyToken, expiresIn14Days } from "../utils/auth.utill";
 import prisma from "../lib/prisma";
+import { JoinStatus } from "@prisma/client";
 
 export class AuthService {
   private authRepo = new AuthRepo();
@@ -187,5 +188,15 @@ export class AuthService {
     if (!isDeleted) {
       throw new UnauthorizedError("이미 로그아웃되었거나 유효하지 않은 세션입니다.");
     }
+  };
+
+  updateAdminStatus = async (adminId: string, status: JoinStatus) => {
+    const admin = await this.authRepo.findById(adminId);
+    if (!admin) throw new NotFoundError("해당 관리자를 찾을 수 없습니다.");
+    if (admin.role === "USER") throw new BadRequestError("해당 유저의 상태를 변경할 수 없습니다.");
+    // 이미 status가 변경되었다면 바로 종료
+    if (admin.joinStatus === status) return;
+
+    await this.authRepo.updateAdminStatus(adminId, status);
   };
 }
