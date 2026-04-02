@@ -6,10 +6,10 @@ COPY package*.json ./
 RUN npm ci
 
 COPY prisma ./prisma
-RUN npx prisma generate
-
 COPY tsconfig.json ./
 COPY src ./src
+
+RUN npx prisma generate
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -21,8 +21,10 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/dist ./dist
 COPY prisma ./prisma
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 RUN chown -R node:node /app
 
