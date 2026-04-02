@@ -61,9 +61,12 @@ describe('pagination.util', () => {
 
     it('현재 페이지와 limit 정보가 그대로 유지된다', () => {
       const result = getPaginationMeta(50, { page: 3, limit: 5 });
-      expect(result.page).toBe(3);
-      expect(result.limit).toBe(5);
-      expect(result.totalPages).toBe(10);
+      expect(result).toEqual({
+        page: 3,
+        limit: 5,
+        totalCount: 50,
+        totalPages: 10,
+      });
     });
   });
 

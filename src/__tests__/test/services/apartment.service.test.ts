@@ -6,19 +6,8 @@ import {
 } from '../../../services/apartment.service';
 import * as apartmentRepository from '../../../repositories/apartment.repository';
 
+// apartment.service는 prisma를 직접 사용하지 않으므로 repository만 모킹
 jest.mock('../../../repositories/apartment.repository');
-jest.mock('../../../lib/prisma', () => ({
-  __esModule: true,
-  default: {
-    $transaction: jest.fn(),
-    apartment: { findMany: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
-  },
-}));
-jest.mock('../../../utils/pagination.util', () => ({
-  parsePagination: jest.fn().mockReturnValue({ page: 1, limit: 10 }),
-  getPaginationMeta: jest.fn(),
-  getSkip: jest.fn().mockReturnValue(0),
-}));
 
 const mockApartmentPublic = {
   id: 'apt-id-1',
@@ -80,10 +69,22 @@ describe('apartment.service', () => {
       const result = await getApartmentsPublic({});
 
       expect(apartmentRepository.findApartmentsPublic).toHaveBeenCalledWith({});
-      expect(result).toEqual({
-        apartments: [mockApartmentPublic],
-        count: 1,
-      });
+      expect(result).toEqual({ apartments: [mockApartmentPublic], count: 1 });
+    });
+
+    it('여러 아파트가 있으면 count가 개수와 일치한다', async () => {
+      const multipleApartments = [
+        mockApartmentPublic,
+        { ...mockApartmentPublic, id: 'apt-id-2', name: '두번째아파트' },
+      ];
+      jest
+        .spyOn(apartmentRepository, 'findApartmentsPublic')
+        .mockResolvedValue(multipleApartments);
+
+      const result = await getApartmentsPublic({});
+
+      expect(result.count).toBe(2);
+      expect(result.apartments).toHaveLength(2);
     });
 
     it('결과가 없으면 빈 배열과 count 0을 반환한다', async () => {
@@ -94,7 +95,7 @@ describe('apartment.service', () => {
       expect(result).toEqual({ apartments: [], count: 0 });
     });
 
-    it('필터 조건을 그대로 전달한다', async () => {
+    it('필터 조건을 그대로 repository에 전달한다', async () => {
       jest.spyOn(apartmentRepository, 'findApartmentsPublic').mockResolvedValue([]);
       const filters = { keyword: '강남', name: '테스트', address: '서울' };
 
@@ -155,6 +156,18 @@ describe('apartment.service', () => {
       });
     });
 
+    it('pagination 파라미터를 repository에 전달한다', async () => {
+      jest
+        .spyOn(apartmentRepository, 'findApartments')
+        .mockResolvedValue({ apartments: [], totalCount: 0 });
+
+      await getApartments({ page: 2, limit: 20 });
+
+      expect(apartmentRepository.findApartments).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2, limit: 20 }),
+      );
+    });
+
     it('admin이 없으면 adminName 등은 null로 반환된다', async () => {
       const aptWithoutAdmin = { ...mockApartmentAdmin, admin: null };
       jest.spyOn(apartmentRepository, 'findApartments').mockResolvedValue({
@@ -184,7 +197,17 @@ describe('apartment.service', () => {
   // getApartmentById (관리자용 상세)
   // ──────────────────────────────────────────────
   describe('getApartmentById', () => {
-    it('아파트를 찾으면 dong/ho range를 포함한 상세 정보를 반환한다', async () => {
+    it('올바른 ID로 repository를 호출한다', async () => {
+      jest
+        .spyOn(apartmentRepository, 'findApartmentById')
+        .mockResolvedValue(mockApartmentAdmin as any);
+
+      await getApartmentById('apt-id-1');
+
+      expect(apartmentRepository.findApartmentById).toHaveBeenCalledWith('apt-id-1');
+    });
+
+    it('아파트를 찾으면 dong/ho range와 admin 정보를 포함한 상세 정보를 반환한다', async () => {
       jest
         .spyOn(apartmentRepository, 'findApartmentById')
         .mockResolvedValue(mockApartmentAdmin as any);
@@ -194,6 +217,8 @@ describe('apartment.service', () => {
       expect(result).toMatchObject({
         id: 'apt-id-1',
         adminName: '관리자',
+        adminContact: '01098765432',
+        adminEmail: 'admin@example.com',
         dongRange: { start: '101', end: '110' },
         hoRange: { start: '101호', end: '120호' },
       });
