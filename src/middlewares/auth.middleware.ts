@@ -23,7 +23,6 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     next();
   } catch (err) {
-    console.error("Auth Middleware Error:", err);
     next(new UnauthorizedError("유효하지 않거나 만료된 토큰입니다."));
   }
 };

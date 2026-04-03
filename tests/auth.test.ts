@@ -5,6 +5,16 @@ import request from "supertest";
 import app from "../src/app";
 import prisma from "../src/lib/prisma";
 
+const payload = {
+  username: "superadmin",
+  password: "password123!",
+  name: "최고관리자",
+  contact: "01000000000",
+  email: "super@test.com",
+  joinStatus: "APPROVED",
+  role: "SUPER_ADMIN",
+};
+
 const baseAdminPayload = {
   password: "password123!",
   name: "관리자",
@@ -42,16 +52,6 @@ describe("Auth 도메인 통합 테스트", () => {
   });
 
   describe("POST /api/auth/signup/super-admin", () => {
-    const payload = {
-      username: "superadmin",
-      password: "password123!",
-      name: "최고관리자",
-      contact: "01000000000",
-      email: "super@test.com",
-      joinStatus: "APPROVED",
-      role: "SUPER_ADMIN",
-    };
-
     it("시스템 통합 관리자가 정상적으로 생성되어야 한다", async () => {
       const res = await request(app).post("/api/auth/signup/super-admin").send(payload);
 
@@ -85,6 +85,18 @@ describe("Auth 도메인 통합 테스트", () => {
 
       expect(res.status).toBe(409);
       expect(res.body.message).toBe("이미 사용 중인 이메일입니다.");
+    });
+
+    it("연락처 중복 시 409 에러를 반환해야 한다", async () => {
+      const res = await request(app)
+        .post("/api/auth/signup/super-admin")
+        .send({
+          ...payload,
+          username: "new_superadmin",
+          email: "new@test.com",
+        });
+      expect(res.status).toBe(409);
+      expect(res.body.message).toBe("이미 등록된 연락처입니다.");
     });
   });
 
@@ -330,6 +342,73 @@ describe("Auth 도메인 통합 테스트", () => {
       approvedResidents.forEach((user) => {
         expect(user.joinStatus).toBe("APPROVED");
       });
+    });
+  });
+
+  describe("권한 테스트 (Authorization)", () => {
+    it("로그인하지 않은 사용자가 어드민 승인을 시도하면 401을 반환해야 한다", async () => {
+      const res = await request(app).patch("/api/auth/admins/status").send({ status: "APPROVED" });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("admin이 다른 admin의 가입을 승인하려 하면 403을 반환해야 한다.", async () => {
+      const res = await request(app)
+        .patch("/api/auth/admins/status")
+        .set("Cookie", adminCookie)
+        .send({ status: "APPROVED" });
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("로그인 실패 테스트", () => {
+    it("틀린 비밀번호로 로그인 시 401 에러를 반환해야 한다.", async () => {
+      const res = await request(app).post("/api/auth/login").send({ username: "superadmin", password: "password12" });
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe("아이디 또는 비밀번호가 일치하지 않습니다.");
+    });
+  });
+
+  describe("POST /api/auth/refresh", () => {
+    it("유효한 리프레시 토큰으로 엑세스 토큰을 재발급 받아야 한다.", async () => {
+      const res = await request(app).post("/api/auth/refresh").set("Cookie", adminCookie);
+
+      expect(res.status).toBe(200);
+
+      const newCookies = res.get("Set-Cookie");
+      expect(newCookies).toBeDefined();
+      expect(newCookies?.some((c) => c.includes("accessToken"))).toBe(true);
+    });
+  });
+
+  it("리프레시 토큰이 없거나 유효하지 않으면 401 에러를 반환해야 한다.", async () => {
+    const res = await request(app).post("/api/auth/refresh").set("Cookie", ["refreshToken=invalid_token_here"]);
+
+    expect(res.status).toBe(401);
+  });
+
+  describe("AuthService - 트랜잭션 및 상세 로직", () => {
+    it("이미 승인된 유저를 중복 승인 요청해도 200을 반환해야 한다", async () => {
+      const targetId = adminIds[0];
+      const res = await request(app)
+        .patch(`/api/auth/admins/${targetId}/status`)
+        .set("Cookie", superAdminCookie)
+        .send({ status: "APPROVED" });
+
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("Token Security", () => {
+    it("로그아웃된 리프레시 토큰으로 재발급 시도 시 401을 반환해야 한다", async () => {
+      await request(app).post("/api/auth/logout").set("Cookie", adminCookie);
+
+      const res = await request(app).post("/api/auth/refresh").set("Cookie", adminCookie);
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe("유효하지 않거나 만료된 세션입니다.");
     });
   });
 });
