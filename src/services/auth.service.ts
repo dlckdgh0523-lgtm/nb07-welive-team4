@@ -1,14 +1,13 @@
 import { createUser, createAdmin, createSuperAdmin, loginData } from "../structs/auth.struct";
 import { AuthRepo } from "../repositories/auth.repository";
 import { ApartRepo } from "../repositories/apart.repository";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "../errors/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError, ConflictError } from "../errors/errors";
 import { LoginResponseDto } from "../models/auth.model";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { verifyToken, expiresIn14Days } from "../utils/auth.utill";
 import prisma from "../lib/prisma";
 import { JoinStatus } from "@prisma/client";
-import { string } from "superstruct";
 
 export class AuthService {
   private authRepo = new AuthRepo();
@@ -21,6 +20,16 @@ export class AuthService {
    * @returns 가입 완료된 유저 정보
    */
   register = async (data: createUser | createAdmin | createSuperAdmin) => {
+    const [existingUsername, existingEmail, existingContract] = await Promise.all([
+      this.authRepo.findUniqueUser({ username: data.username }),
+      this.authRepo.findUniqueUser({ email: data.email }),
+      this.authRepo.findUniqueUser({ contact: data.contact }),
+    ]);
+
+    if (existingUsername) throw new ConflictError("이미 사용 중인 아이디입니다.");
+    if (existingEmail) throw new ConflictError("이미 사용 중인 이메일입니다.");
+    if (existingContract) throw new ConflictError("이미 등록된 연락처입니다.");
+
     const saltRound = 10;
     const hashedPassword = await bcrypt.hash(data.password, saltRound);
 

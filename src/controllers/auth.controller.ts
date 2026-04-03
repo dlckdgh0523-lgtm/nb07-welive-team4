@@ -17,7 +17,7 @@ export class AuthController {
 
   /**
    * 일반 사용자 회원가입
-   * @route POST /api/auth/register/user
+   * @route POST /api/auth/signup
    */
   createUser = async (req: Request, res: Response) => {
     const createUserDto = create(req.body, UserStruct);
@@ -28,7 +28,7 @@ export class AuthController {
 
   /**
    * 아파트 관리자 회원가입
-   * @route POST /api/auth/register/admin
+   * @route POST /api/auth/signup/admin
    */
   createAdmin = async (req: Request, res: Response) => {
     const createAdminDto = create(req.body, AdminStruct);
@@ -39,7 +39,7 @@ export class AuthController {
 
   /**
    * 시스템 통합 관리자 회원가입
-   * @route POST /api/auth/register/super-admin
+   * @route POST /api/auth/singup/super-admin
    */
   createSuperAdmin = async (req: Request, res: Response) => {
     const createSuperAdminDto = create(req.body, SuperAdminStruct);
@@ -61,10 +61,13 @@ export class AuthController {
   };
 
   private setAuthCookies = (res: Response, access: string, refresh: string) => {
+    const isProduction = process.env.NODE_ENV === "production";
+    const isTest = process.env.NODE_ENV === "test";
+
     const commonOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict" as const,
+      secure: isProduction && !isTest,
+      sameSite: isProduction ? ("strict" as const) : ("lax" as const),
       path: "/",
     };
 

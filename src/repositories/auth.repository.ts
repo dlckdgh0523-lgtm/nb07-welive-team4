@@ -24,6 +24,10 @@ export class AuthRepo {
     });
   };
 
+  findUniqueUser = async (where: Prisma.UserWhereUniqueInput) => {
+    return await prisma.user.findUnique({ where });
+  };
+
   /**
    * 유저의 소속 아파트 정보를 업데이트합니다. (관리자 회원가입 시 사용)
    * @param createdAdminId - 업데이트할 사용자 ID
