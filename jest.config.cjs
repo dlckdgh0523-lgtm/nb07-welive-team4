@@ -2,7 +2,7 @@
 module.exports = {
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
-  testMatch: ["**/test/**/*.test.ts", "**/tests/**/*.test.ts"],
+  testMatch: ["**/tests/**/*.test.ts"],
   verbose: true,
   forceExit: true,
   transform: {

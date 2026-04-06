@@ -41,7 +41,7 @@
     "struct": "^0.0.12",
     "superstruct": "^2.0.2",
     "swagger-ui-express": "^5.0.1",
-    "tslib": "^2.8.1"
+    "tslib": "file:tslib-2.8.1.tgz"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

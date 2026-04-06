@@ -29,14 +29,13 @@ export const getApartmentPublicById = async (id: string): Promise<ApartmentPubli
   };
 };
 
-// 관리자용 아파트 목록 조회 (슈퍼관리자/관리자)
+// 관리자용 아파트 목록 조회
 export const getApartments = async (
   query: ApartmentAdminQuery
 ): Promise<ApartmentListAdminResponse> => {
   const { page, limit } = parsePagination(query.page, query.limit);
   const { apartments, totalCount } = await apartmentRepository.findApartments({ ...query, page, limit });
 
-  // API 명세서 응답 포맷에 맞게 admin 정보 flatten
   const formattedApartments = apartments.map((apt) => ({
     id: apt.id,
     name: apt.name,
@@ -61,7 +60,7 @@ export const getApartments = async (
   return { apartments: formattedApartments, totalCount };
 };
 
-// 관리자용 아파트 상세 조회 (슈퍼관리자/관리자)
+// 관리자용 아파트 상세 조회
 export const getApartmentById = async (id: string) => {
   const apartment = await apartmentRepository.findApartmentById(id);
   if (!apartment) throw new NotFoundError("아파트를 찾을 수 없습니다.");

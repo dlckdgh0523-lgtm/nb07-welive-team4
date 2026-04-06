@@ -6,7 +6,7 @@ const findApartmentPublicByIdMock = jest.fn();
 const findApartmentsMock = jest.fn();
 const findApartmentByIdMock = jest.fn();
 
-jest.unstable_mockModule('../../src/repositories/apartment.repository', () => ({
+jest.unstable_mockModule('../src/repositories/apartment.repository', () => ({
   findApartmentsPublic: findApartmentsPublicMock,
   findApartmentPublicById: findApartmentPublicByIdMock,
   findApartments: findApartmentsMock,
@@ -14,7 +14,7 @@ jest.unstable_mockModule('../../src/repositories/apartment.repository', () => ({
 }));
 
 const { getApartmentsPublic, getApartmentPublicById, getApartments, getApartmentById } =
-  await import('../../src/services/apartment.service');
+  await import('../src/services/apartment.service');
 
 const mockApartmentPublic = {
   id: 'apt-id-1',
