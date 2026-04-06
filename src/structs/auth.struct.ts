@@ -1,4 +1,4 @@
-import { object, string, pattern, enums, size, Infer, optional } from "superstruct";
+import { object, string, pattern, enums, size, Infer, optional, type } from "superstruct";
 
 const Contact = pattern(string(), /^010\d{8}$/);
 
@@ -7,9 +7,9 @@ const Email = pattern(string(), /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
 const commonFields = {
   username: size(string(), 3, 20),
   password: size(string(), 8, 20),
-  contact: Contact, // 미리 정의하신 Contact 정규식
+  contact: Contact,
   name: size(string(), 2, 10),
-  email: Email, // 미리 정의하신 Email 정규식
+  email: Email,
 };
 
 export const UserStruct = object({
@@ -48,10 +48,16 @@ export const LoginStruct = object({
   password: size(string(), 8, 20),
 });
 
-export const UserId = object({
-  user: object({
-    id: string(),
-  }),
+export const UpdateStatusStruct = object({
+  status: enums(["APPROVED", "REJECTED"]),
+});
+
+export const AdminId = type({
+  adminId: string(),
+});
+
+export const ResidentId = type({
+  residentId: string(),
 });
 
 export type createUser = Infer<typeof UserStruct>;

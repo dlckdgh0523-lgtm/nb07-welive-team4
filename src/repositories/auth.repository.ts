@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, JoinStatus } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { CreateUserDTO } from "../types/auth.type";
 
@@ -22,6 +22,10 @@ export class AuthRepo {
         role: true,
       },
     });
+  };
+
+  findUniqueUser = async (where: Prisma.UserWhereUniqueInput) => {
+    return await prisma.user.findUnique({ where });
   };
 
   /**
@@ -109,5 +113,58 @@ export class AuthRepo {
     });
 
     return result.count > 0;
+  };
+
+  /**
+   * 사용자 ID를 통해 유저의 권한 및 상태 정보를 조회
+   * @param id - 조회할 사용자 ID
+   * @returns 권한, 가입 상태, 소속 아파트 ID를 포함한 유저 정보
+   */
+  findById = async (id: string) => {
+    return await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true, joinStatus: true, residentApartmentId: true },
+    });
+  };
+
+  /**
+   * 특정 사용자의 가입 승인 상태를 업데이트
+   * @param userId - 상태를 변경할 사용자 ID
+   * @param status - 새로운 가입 상태 (APPROVED/REJECTED)
+   */
+  updateUserStatus = async (userId: string, status: JoinStatus) => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { joinStatus: status },
+    });
+  };
+
+  /**
+   * 가입 대기 중인 모든 관리자(ADMIN)의 상태를 일괄 변경
+   * @param status - 변경할 목적 상태 (APPROVED/REJECTED)
+   * @returns Promise<void>
+   */
+  bulkUpdateAdminStatus = async (status: JoinStatus): Promise<void> => {
+    await prisma.user.updateMany({
+      where: {
+        role: "ADMIN",
+        joinStatus: "PENDING",
+      },
+      data: {
+        joinStatus: status,
+      },
+    });
+  };
+
+  /**
+   * 특정 아파트에 소속된 대기 중인 모든 주민(USER)의 상태를 일괄 변경
+   * @param apartmentId - 대상 아파트 ID
+   * @param status - 변경할 목적 상태 (APPROVED/REJECTED)
+   */
+  bulkUpdateResidentStatus = async (apartmentId: string, status: JoinStatus) => {
+    await prisma.user.updateMany({
+      where: { residentApartmentId: apartmentId, joinStatus: "PENDING", role: "USER" },
+      data: { joinStatus: status },
+    });
   };
 }

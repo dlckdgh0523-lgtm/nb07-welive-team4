@@ -1,60 +1,9 @@
-import express from "express";
-import type { Request, Response } from "express";
-import cors from "cors";
 import "dotenv/config";
 import { getEnv } from "./config/env";
-import uploadRouter from "./routes/upload.route";
-import dbRouter from "./routes/db.route";
 import { db } from "./lib/db";
-import cookieParser from "cookie-parser";
-import authRouter from "./routes/auth.route";
-import apartmentRouter from "./routes/apartment.routes";
-import { setupSwagger } from "./docs/swagger";
-import { errorHandler } from "./middlewares/errorHandler";
+import app from "./app";
 
 const env = getEnv();
-const app = express();
-
-app.use(
-  cors({
-    origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
-  }),
-);
-
-app.use(express.json());
-app.use(cookieParser());
-
-setupSwagger(app);
-
-app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).json({
-    ok: true,
-    service: "codequest-api",
-    env: env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-app.get("/api/ping", (_req: Request, res: Response) => {
-  res.status(200).json({
-    message: "pong",
-    success: true,
-  });
-});
-
-app.use("/api", uploadRouter);
-app.use("/api", dbRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/apartments", apartmentRouter);
-
-app.use(errorHandler);
-
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    message: "Not Found",
-  });
-});
 
 const server = app.listen(env.PORT, "0.0.0.0", () => {
   console.log(`[BOOT] api is running on port ${env.PORT}`);
