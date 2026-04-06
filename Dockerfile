@@ -20,7 +20,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci && npm cache clean --force
+RUN npm ci && npm install tsx && npm cache clean --force
 
 COPY prisma ./prisma
 COPY --from=builder /app/dist ./dist
