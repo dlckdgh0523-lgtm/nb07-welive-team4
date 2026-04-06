@@ -1,6 +1,6 @@
 import { createUser, createAdmin, createSuperAdmin, loginData } from "../structs/auth.struct";
 import { AuthRepo } from "../repositories/auth.repository";
-import { ApartRepo } from "../repositories/apart.repository";
+import { ApartRepo } from "../repositories/apartment.repository";
 import { BadRequestError, NotFoundError, UnauthorizedError, ConflictError } from "../errors/errors";
 import { LoginResponseDto } from "../models/auth.model";
 import bcrypt from "bcrypt";
@@ -14,10 +14,10 @@ export class AuthService {
   private apartRepo = new ApartRepo();
 
   /**
-   * 유저의 역할(USER, ADMIN, SUPER_ADMIN)에 따라 차별화된 회원가입 로직을 수행
-   * @param data - 회원가입에 필요한 데이터 객체
-   * @throws {NotFoundError} 아파트 정보가 DB에 없을 경우 발생 (USER 권한 가입 시)
-   * @returns 가입 완료된 유저 정보
+   * ?��?????��(USER, ADMIN, SUPER_ADMIN)???�라 차별?�된 ?�원가??로직???�행
+   * @param data - ?�원가?�에 ?�요???�이??객체
+   * @throws {NotFoundError} ?�파???�보가 DB???�을 경우 발생 (USER 권한 가????
+   * @returns 가???�료???��? ?�보
    */
   register = async (data: createUser | createAdmin | createSuperAdmin) => {
     const [existingUsername, existingEmail, existingContract] = await Promise.all([
@@ -41,11 +41,11 @@ export class AuthService {
       email: data.email,
     };
 
-    // 일반 유저 가입 로직
+    // ?�반 ?��? 가??로직
     if (data.role === "USER") {
       const apartmentId = await this.apartRepo.getApartmentId(data.apartmentName);
       if (!apartmentId) {
-        throw new NotFoundError(`해당 아파트가 존재하지 않습니다.`);
+        throw new NotFoundError(`?�당 ?�파?��? 존재?��? ?�습?�다.`);
       }
 
       const user = await this.authRepo.createUser({
@@ -60,10 +60,10 @@ export class AuthService {
       return user;
     }
 
-    // 아파트 관리자(ADMIN) 가입 로직 (아파트 정보 동시에 생성)
+    // ?�파??관리자(ADMIN) 가??로직 (?�파???�보 ?�시???�성)
     if (data.role === "ADMIN") {
       return await prisma.$transaction(async (tx) => {
-        // 관리자 계정 생성
+        // 관리자 계정 ?�성
         const createdAdmin = await this.authRepo.createUser(
           {
             ...commonData,
@@ -72,7 +72,7 @@ export class AuthService {
           tx,
         );
 
-        // 해당 관리자가 관리하는 아파트 생성
+        // ?�당 관리자가 관리하???�파???�성
         const createdApartment = await this.apartRepo.createApart(
           {
             name: data.apartmentName,
@@ -92,14 +92,14 @@ export class AuthService {
           tx,
         );
 
-        // 생성된 아파트 ID를 관리자 계정에 업데이트
+        // ?�성???�파??ID�?관리자 계정???�데?�트
         await this.authRepo.updateUser(createdAdmin.id, createdApartment.id, tx);
 
         return createdAdmin;
       });
     }
 
-    // 시스템 통합 관리자(SUPER_ADMIN) 가입 로직
+    // ?�스???�합 관리자(SUPER_ADMIN) 가??로직
     if (data.role === "SUPER_ADMIN") {
       const superAdmin = await this.authRepo.createUser({
         ...commonData,
@@ -112,22 +112,22 @@ export class AuthService {
   };
 
   /**
-   * 사용자 로그인을 처리하고 새로운 Access/Refresh 토큰 세트를 발급
-   * @param data - 로그인 입력 데이터 (username, password)
-   * @throws {UnauthorizedError} 아이디가 없거나 비밀번호가 틀린 경우 발생
+   * ?�용??로그?�을 처리?�고 ?�로??Access/Refresh ?�큰 ?�트�?발급
+   * @param data - 로그???�력 ?�이??(username, password)
+   * @throws {UnauthorizedError} ?�이?��? ?�거??비�?번호가 ?��?경우 발생
    */
   login = async (data: loginData) => {
     const user = await this.authRepo.findByUsername(data.username);
     if (!user) {
-      throw new UnauthorizedError("아이디 또는 비밀번호가 일치하지 않습니다.");
+      throw new UnauthorizedError("?�이???�는 비�?번호가 ?�치?��? ?�습?�다.");
     }
 
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedError("아이디 또는 비밀번호가 일치하지 않습니다.");
+      throw new UnauthorizedError("?�이???�는 비�?번호가 ?�치?��? ?�습?�다.");
     }
 
-    // 토큰 발급 및 기존 토큰 정리
+    // ?�큰 발급 �?기존 ?�큰 ?�리
     const { accessToken, refreshToken } = await this.rotateTokens({
       id: user.id,
       username: user.username,
@@ -139,18 +139,18 @@ export class AuthService {
   };
 
   /**
-   * 유효한 Refresh 토큰을 확인하고 Access/Refresh 토큰을 재발급
-   * @param token - 클라이언트로부터 전달받은 Refresh Token
-   * @throws {UnauthorizedError} 토큰이 유효하지 않거나 만료된 경우 발생
+   * ?�효??Refresh ?�큰???�인?�고 Access/Refresh ?�큰???�발�?
+   * @param token - ?�라?�언?�로부???�달받�? Refresh Token
+   * @throws {UnauthorizedError} ?�큰???�효?��? ?�거??만료??경우 발생
    */
   refresh = async (token: string) => {
-    // 토큰 유효성 검사
+    // ?�큰 ?�효??검??
     await verifyToken(token, process.env.JWT_REFRESH_SECRET!);
 
-    // DB에 저장된 토큰인지 확인 및 만료 여부 체크
+    // DB???�?�된 ?�큰?��? ?�인 �?만료 ?��? 체크
     const savedToken = await this.authRepo.findRefreshToken(token);
     if (!savedToken || savedToken.expiresAt < new Date()) {
-      throw new UnauthorizedError("유효하지 않거나 만료된 세션입니다.");
+      throw new UnauthorizedError("?�효?��? ?�거??만료???�션?�니??");
     }
 
     const user = savedToken.user;
@@ -159,8 +159,8 @@ export class AuthService {
   };
 
   /**
-   * 기존 토큰을 모두 삭제하고 새로운 토큰 세트를 DB에 저장 후 반환(로그인/재발급 시 사용)
-   * @param user - 토큰에 담길 유저 정보 페이로드
+   * 기존 ?�큰??모두 ??��?�고 ?�로???�큰 ?�트�?DB???�????반환(로그???�발�????�용)
+   * @param user - ?�큰???�길 ?��? ?�보 ?�이로드
    * @private
    */
   private rotateTokens = async (user: { id: string; username: string; role: string }) => {
@@ -178,7 +178,7 @@ export class AuthService {
 
     const newExpiresAt = expiresIn14Days();
 
-    // 기존 토큰 모두 삭제 후 새 토큰 저장 (트랜잭션 사용)
+    // 기존 ?�큰 모두 ??�� ?????�큰 ?�??(?�랜??�� ?�용)
     await prisma.$transaction(async (tx) => {
       await this.authRepo.deleteAllRefreshTokens(user.id, tx);
       await this.authRepo.saveRefreshToken(user.id, refreshToken, newExpiresAt, tx);
@@ -188,15 +188,15 @@ export class AuthService {
   };
 
   /**
-   * 특정 사용자의 리프레시 토큰을 DB에서 삭제하여 로그아웃 처리합니다.
-   * @param userId - 로그아웃을 시도하는 유저 ID
-   * @param refreshToken - 무효화할 특정 리프레시 토큰
+   * ?�정 ?�용?�의 리프?�시 ?�큰??DB?�서 ??��?�여 로그?�웃 처리?�니??
+   * @param userId - 로그?�웃???�도?�는 ?��? ID
+   * @param refreshToken - 무효?�할 ?�정 리프?�시 ?�큰
    */
   logout = async (userId: string, refreshToken: string): Promise<void> => {
     const isDeleted = await this.authRepo.deleteRefreshTokens(userId, refreshToken);
 
     if (!isDeleted) {
-      throw new UnauthorizedError("이미 로그아웃되었거나 유효하지 않은 세션입니다.");
+      throw new UnauthorizedError("?��? 로그?�웃?�었거나 ?�효?��? ?��? ?�션?�니??");
     }
   };
 
