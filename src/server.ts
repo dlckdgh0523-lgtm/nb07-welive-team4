@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { getEnv } from "./config/env";
 import { db } from "./lib/db";
-
 import app from "./app";
 
 const env = getEnv();
