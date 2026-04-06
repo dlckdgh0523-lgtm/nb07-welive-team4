@@ -1,4 +1,4 @@
-import { calcDongRange, calcHoRange, isVoteActive, isPollEditable } from '../../../utils/apartment.util';
+import { calcDongRange, calcHoRange, isVoteActive, isPollEditable } from '../../src/utils/apartment.util';
 
 describe('apartment.util', () => {
   describe('calcDongRange', () => {

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "rootDir": "./src",
+    "rootDir": ".",
     "esModuleInterop": true,
     "module": "esnext",
     "target": "esnext",
@@ -15,5 +15,5 @@
     "ignoreDeprecations": "6.0",
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

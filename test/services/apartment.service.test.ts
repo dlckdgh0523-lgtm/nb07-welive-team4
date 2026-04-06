@@ -3,11 +3,11 @@ import {
   getApartmentPublicById,
   getApartments,
   getApartmentById,
-} from '../../../services/apartment.service';
-import * as apartmentRepository from '../../../repositories/apartment.repository';
+} from '../../src/services/apartment.service';
+import * as apartmentRepository from '../../src/repositories/apartment.repository';
 
 // apartment.service는 prisma를 직접 사용하지 않으므로 repository만 모킹
-jest.mock('../../../repositories/apartment.repository');
+jest.mock('../../src/repositories/apartment.repository');
 
 const mockApartmentPublic = {
   id: 'apt-id-1',

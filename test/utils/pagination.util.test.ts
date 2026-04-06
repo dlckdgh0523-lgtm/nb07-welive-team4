@@ -1,4 +1,4 @@
-import { parsePagination, getPaginationMeta, getSkip } from '../../../utils/pagination.util';
+import { parsePagination, getPaginationMeta, getSkip } from '../../src/utils/pagination.util';
 
 describe('pagination.util', () => {
   describe('parsePagination', () => {
