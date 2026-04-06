@@ -15,8 +15,8 @@ dotenv.config();
 
 import request from "supertest";
 import app from "../src/app";
-import prisma from "../src/lib/prisma";
-
+import prisma, { pool } from "../src/lib/prisma";
+import { db } from "../src/lib/db";
 const payload = {
   username: "superadmin",
   password: "password123!",
@@ -61,6 +61,8 @@ describe("Auth 도메인 통합 테스트", () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
+    await pool.end();
+    // await db.end();
   });
 
   describe("POST /api/auth/signup/super-admin", () => {
