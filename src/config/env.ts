@@ -1,3 +1,7 @@
+
+
+
+
 export interface Env {
   NODE_ENV: string;
   PORT: number;
@@ -5,7 +9,7 @@ export interface Env {
 }
 
 export function getEnv(): Env {
-  const port = Number(process.env.PORT ?? 3000);
+  const port = Number(process.env.PORT ?? 4000);
 
   if (Number.isNaN(port)) {
     throw new Error("PORT must be a number");

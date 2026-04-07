@@ -45,19 +45,35 @@ jobs:
   docker-health-check:
     needs: build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v5
       - name: Build Docker image
         run: docker build -t advanced-backend .
       - name: Run container
         run: |
-          docker run -d --name advanced-backend -p 3000:3000 \
+          docker run -d --name advanced-backend -p 4000:4000 \
+            --network host \
             -e NODE_ENV=production \
-            -e PORT=3000 \
+            -e PORT=4000 \
             -e CORS_ORIGIN=* \
             -e AWS_REGION=ap-northeast-2 \
             -e S3_BUCKET=ci-test-bucket \
-            -e DB_HOST=localhost \
+            -e DATABASE_URL=postgresql://test:test@127.0.0.1:5432/testdb \
+            -e DB_HOST=127.0.0.1 \
             -e DB_PORT=5432 \
             -e DB_NAME=testdb \
             -e DB_USER=test \
@@ -67,7 +83,7 @@ jobs:
       - name: Wait and check health
         run: |
           for i in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:3000/health; then
+            if curl -fsS http://127.0.0.1:4000/health; then
               exit 0
             fi
             sleep 2

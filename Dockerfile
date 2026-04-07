@@ -7,6 +7,8 @@ RUN npm ci
 
 COPY prisma ./prisma
 COPY tsconfig.json ./
+COPY tsconfig.build.json ./
+COPY tsup.config.ts ./
 COPY src ./src
 
 RUN npx prisma generate
@@ -19,7 +21,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 COPY prisma ./prisma
 COPY --from=builder /app/dist ./dist
@@ -30,9 +32,9 @@ RUN chown -R node:node /app
 
 USER node
 
-EXPOSE 3000
+EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -q -O /dev/null http://localhost:3000/health || exit 1
+  CMD wget -q -O /dev/null http://localhost:4000/health || exit 1
 
 CMD ["node", "dist/server.js"]

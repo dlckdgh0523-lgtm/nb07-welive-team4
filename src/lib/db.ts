@@ -17,10 +17,9 @@ export const db = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: sslEnabled
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: sslEnabled ? { rejectUnauthorized: false } : false,
   max: 10,
+  allowExitOnIdle: true,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });

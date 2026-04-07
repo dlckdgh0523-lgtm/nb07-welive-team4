@@ -4,7 +4,7 @@ module.exports = {
   testEnvironment: "node",
   testMatch: ["**/tests/**/*.test.ts"],
   verbose: true,
-  forceExit: true,
+  // forceExit: true,
   transform: {
     "^.+\\.tsx?$": [
       "ts-jest",

@@ -1,8 +1,8 @@
 import { getEnv } from './env';
 
 describe('getEnv', () => {
-  it('returns PORT default 3000 when not set', () => {
+  it('returns PORT default 4000 when not set', () => {
     delete process.env.PORT;
-    expect(getEnv().PORT).toBe(3000);
+    expect(getEnv().PORT).toBe(4000);
   });
 });

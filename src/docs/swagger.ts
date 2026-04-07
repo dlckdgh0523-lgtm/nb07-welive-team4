@@ -25,5 +25,5 @@ const swaggerDocument = {
 
 export const setupSwagger = (app: Express): void => {
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-  console.log("Swagger 문서: http://localhost:3000/api-docs");
+  console.log("Swagger 문서: http://localhost:4000/api-docs");
 };

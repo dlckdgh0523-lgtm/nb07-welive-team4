@@ -2,7 +2,7 @@ import express from "express";
 import { Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { getEnv } from "./config/env.js";
+import { getEnv } from "./config/env";
 import uploadRouter from "./routes/upload.route";
 import dbRouter from "./routes/db.route";
 import authRouter from "./routes/auth.route";
