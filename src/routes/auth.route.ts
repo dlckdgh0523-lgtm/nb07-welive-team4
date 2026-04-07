@@ -44,7 +44,7 @@ authRouter.use(authMiddleware);
 authRouter.post("/logout", authController.logout);
 
 /** 거절 계정 관리(최고 관리자는 관리자 계정을, 관리자는 사용자 계정을 일괄 정리합니다. */
-authRouter.post("/auth/cleanup", authController.cleanup);
+authRouter.post("/cleanup", authController.cleanup);
 
 // ------------------------------------------
 // [권한: SUPER_ADMIN] 아파트 관리자 승인 및 관리

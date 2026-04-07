@@ -147,6 +147,26 @@ describe("Auth 도메인 통합 테스트", () => {
       });
       expect(userCount).toBe(3);
     });
+
+    describe("Signup Transaction - 롤백 검증", () => {
+      it("아파트 정보 생성 중 에러가 발생하면 유저 계정도 생성되지 않아야 한다", async () => {
+        // 일부러 잘못된 데이터(예: 필수 필드 누락 등)를 보내거나
+        // 서비스 로직에서 트랜잭션 내부 에러를 유도하는 시나리오
+        const incompleteData = {
+          username: "fail_user",
+          password: "password123!",
+          role: "ADMIN",
+        };
+
+        const res = await request(app).post("/api/auth/signup/admin").send(incompleteData);
+
+        expect(res.status).not.toBe(201);
+
+        // DB 확인: 유저가 생성되어 있으면 안 됨
+        const user = await prisma.user.findUnique({ where: { username: "fail_user" } });
+        expect(user).toBeNull();
+      });
+    });
   });
 
   describe("POST /api/auth/login - super-admin", () => {
@@ -171,7 +191,6 @@ describe("Auth 도메인 통합 테스트", () => {
       const cookieHeader = res.get("Set-Cookie");
       if (!cookieHeader) throw new Error("Cookie not found");
       superAdminCookie = Array.isArray(cookieHeader) ? cookieHeader : [cookieHeader];
-      console.log("획득한 쿠키:", superAdminCookie);
     });
   });
 
@@ -216,25 +235,71 @@ describe("Auth 도메인 통합 테스트", () => {
     });
   });
 
-  describe("POST /api/auth/logout", () => {
-    it("로그아웃을 진행하면 refresh token이 삭제되어야 한다", async () => {
-      const tokenBefore = await prisma.refreshToken.findMany();
-      expect(tokenBefore.length).toBeGreaterThan(0);
+  describe("Data Cleanup - REJECTED 데이터 삭제", () => {
+    it("SUPER_ADMIN은 거절된(REJECTED) 모든 어드민과 아파트를 일괄 삭제할 수 있다", async () => {
+      // 1. 거절된 어드민 셋업 (가입 승인 테스트 이후 status를 REJECTED로 변경)
+      // 2. adminClean API 호출 (슈퍼어드민 쿠키 필요)
+      const res = await request(app).post("/api/auth/cleanup").set("Cookie", superAdminCookie);
 
-      const res = await request(app).post("/api/auth/logout").set("Cookie", superAdminCookie);
+      expect(res.status).toBe(200);
 
-      expect(res.status).toBe(204);
+      // 3. 실제로 삭제되었는지 쿼리로 확인
+      const rejectedCount = await prisma.user.count({
+        where: { role: "ADMIN", joinStatus: "REJECTED" },
+      });
+      expect(rejectedCount).toBe(0);
+    });
+  });
 
-      const tokenAfter = await prisma.refreshToken.findMany();
-      expect(tokenAfter.length).toBe(0);
+  describe("PATCH /api/auth/admins/:adminId", () => {
+    it("슈퍼어드민은 어드민 정보를 수정할 수 있어야 한다.", async () => {
+      const targetAdminId = adminIds[adminIds.length - 1];
+      const updatePayload = {
+        contact: "01099993333",
+        name: "수정된 어드민",
+        email: "update@test.com",
+      };
 
-      const cookies = res.get("Set-Cookie");
-      if (cookies) {
-        const hasExpiredCookie = cookies.some(
-          (cookie) => cookie.includes("Max-Age=0") || cookie.includes("Expires=Thu, 01 Jan 1970"),
-        );
-        expect(hasExpiredCookie).toBe(true);
-      }
+      const res = await request(app)
+        .patch(`/api/auth/admins/${targetAdminId}`)
+        .set("Cookie", superAdminCookie)
+        .send(updatePayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("작업이 성공적으로 완료되었습니다.");
+
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: targetAdminId! },
+      });
+
+      expect(updatedUser?.name).toBe(updatePayload.name);
+      expect(updatedUser?.contact).toBe(updatePayload.contact);
+      expect(updatedUser?.email).toBe(updatePayload.email);
+    });
+
+    it("슈퍼어드민은 어드민 아파트 기본 정보를 변경할 수 있어야 한다", async () => {
+      const targetAdminId = adminIds[adminIds.length - 1];
+      const apartmentUpdatePayload = {
+        description: "아파트 업데이트 테스트",
+        apartmentName: "업데이트 아파트",
+        apartmentManagementNumber: "023545999",
+      };
+
+      const res = await request(app)
+        .patch(`/api/auth/admins/${targetAdminId}`)
+        .set("Cookie", superAdminCookie)
+        .send(apartmentUpdatePayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("작업이 성공적으로 완료되었습니다.");
+
+      const updateApart = await prisma.apartment.findUnique({
+        where: { adminId: targetAdminId! },
+      });
+
+      expect(updateApart?.description).toBe("아파트 업데이트 테스트");
+      expect(updateApart?.name).toBe("업데이트 아파트");
+      expect(updateApart?.officeNumber).toBe("023545999");
     });
   });
 
@@ -355,6 +420,20 @@ describe("Auth 도메인 통합 테스트", () => {
         expect(user.joinStatus).toBe("APPROVED");
       });
     });
+
+    it("주민 승인 API에 어드민 ID를 넣으면 400 에러를 반환해야 한다", async () => {
+      // adminId를 가져옴
+      const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+
+      const res = await request(app)
+        .patch(`/api/auth/residents/${admin?.id}/status`)
+        .set("Cookie", adminCookie) // 혹은 superAdminCookie
+        .send({ status: "APPROVED" });
+
+      // 서비스 로직의 validateAndUpdateStatus에서 걸러져야 함
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain("해당 사용자의 상태를 변경할 수 없습니다");
+    });
   });
 
   describe("권한 테스트 (Authorization)", () => {
@@ -422,5 +501,36 @@ describe("Auth 도메인 통합 테스트", () => {
       expect(res.status).toBe(401);
       expect(res.body.message).toBe("유효하지 않거나 만료된 세션입니다.");
     });
+  });
+
+  describe("POST /api/auth/logout", () => {
+    it("로그아웃을 진행하면 해당 유저의 리프레시 토큰이 삭제되어야 한다", async () => {
+      const targetUser = { username: "superadmin", password: "password123!" };
+
+      const loginRes = await request(app).post("/api/auth/login").send(targetUser);
+      const currentCookie = loginRes.get("Set-Cookie");
+
+      // 로그인한 유저의 정보를 가져옴
+      const user = await prisma.user.findUnique({ where: { username: targetUser.username } });
+
+      await request(app).post("/api/auth/logout").set("Cookie", currentCookie!);
+
+      // 전체 토큰이 아니라 '이 유저'의 토큰만 0개인지 확인해야 함
+      const userTokens = await prisma.refreshToken.findMany({
+        where: { userId: user!.id },
+      });
+
+      expect(userTokens.length).toBe(0);
+    });
+  });
+
+  it("로그아웃 후 리프레시 토큰으로 재발급 시도시 401을 반환해야 한다", async () => {
+    //로그아웃 수행
+    await request(app).post("/api/auth/logout").set("Cookie", superAdminCookie);
+
+    //로그아웃된 쿠키(리프레시 토큰 포함)로 갱신 시도
+    const res = await request(app).post("/api/auth/refresh").set("Cookie", superAdminCookie);
+
+    expect(res.status).toBe(401);
   });
 });

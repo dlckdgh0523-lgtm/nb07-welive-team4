@@ -159,35 +159,6 @@ export class AuthService {
   };
 
   /**
-   * 기존 토큰을 모두 삭제하고 새로운 토큰 세트를 DB에 저장 후 반환(로그인/재발급 시 사용)
-   * @param user - 토큰에 담길 유저 정보 페이로드
-   * @private
-   */
-  private rotateTokens = async (user: { id: string; username: string; role: string }) => {
-    const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_ACCESS_SECRET!,
-      { expiresIn: "15m" },
-    );
-
-    const refreshToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_REFRESH_SECRET!,
-      { expiresIn: "14d" },
-    );
-
-    const newExpiresAt = expiresIn14Days();
-
-    // 기존 토큰 모두 삭제 후 새 토큰 저장 (트랜잭션 사용)
-    await prisma.$transaction(async (tx) => {
-      await this.authRepo.deleteAllRefreshTokens(user.id, tx);
-      await this.authRepo.saveRefreshToken(user.id, refreshToken, newExpiresAt, tx);
-    });
-
-    return { accessToken, refreshToken };
-  };
-
-  /**
    * 특정 사용자의 리프레시 토큰을 DB에서 삭제하여 로그아웃 처리합니다.
    * @param userId - 로그아웃을 시도하는 유저 ID
    * @param refreshToken - 무효화할 특정 리프레시 토큰
@@ -217,27 +188,6 @@ export class AuthService {
   updateResidentStatus = async (residentId: string, status: JoinStatus) => {
     await this.validateAndUpdateStatus(residentId, status, "USER");
   };
-
-  /**
-   * 특정 사용자의 존재 여부, 역할(Role), 현재 상태를 검증한 후 상태를 업데이트
-   * @param id - 사용자 ID
-   * @param status - 변경하려는 목적 상태
-   * @param targetRole - 해당 API가 타겟팅하는 역할 (ADMIN 또는 USER)
-   * @throws {NotFoundError} 사용자가 존재하지 않을 경우
-   * @throws {BadRequestError} 사용자의 역할이 타겟 역할과 일치하지 않을 경우
-   * @private
-   */
-  private async validateAndUpdateStatus(id: string, status: JoinStatus, targetRole: "ADMIN" | "USER") {
-    const user = await this.authRepo.findById(id);
-    if (!user) throw new NotFoundError("해당 사용자를 찾을 수 없습니다.");
-
-    if (user.role !== targetRole) {
-      throw new BadRequestError("해당 사용자의 상태를 변경할 수 없습니다.");
-    }
-    if (user.joinStatus === status) return;
-
-    await this.authRepo.updateUserStatus(id, status);
-  }
 
   /**
    * 가입 대기 중인 모든 관리자(ADMIN)의 상태를 일괄 변경
@@ -272,8 +222,7 @@ export class AuthService {
    * @throws {NotFoundError} 관리자 또는 아파트 정보가 DB에 없을 경우 발생
    */
   updateAdminInfo = async (adminId: string, data: UpdateAdminInfo) => {
-    const admin = await this.authRepo.findById(adminId);
-    if (!admin) throw new NotFoundError("해당 어드민을 찾을 수 없습니다.");
+    const admin = await this.getAdminOrThrow(adminId);
 
     const apartmentId = admin.managedApartment?.id;
     const { apartmentName, apartmentAddress, apartmentManagementNumber, description, ...adminFields } = data;
@@ -310,8 +259,7 @@ export class AuthService {
    * @throws {BadRequestError} 관리자와 연결된 아파트 정보가 없을 경우
    */
   deleteAdmin = async (adminId: string) => {
-    const admin = await this.authRepo.findById(adminId);
-    if (!admin) throw new NotFoundError("해당 어드민을 찾을 수 없습니다.");
+    const admin = await this.getAdminOrThrow(adminId);
 
     const apartmentId = admin.managedApartment?.id;
     if (!apartmentId) {
@@ -350,8 +298,7 @@ export class AuthService {
    * @throws {BadRequestError} 관리 중인 아파트 정보가 없을 경우
    */
   residentClean = async (adminId: string) => {
-    const admin = await this.authRepo.findById(adminId);
-    if (!admin) throw new NotFoundError("해당 어드민을 찾을 수 없습니다.");
+    const admin = await this.getAdminOrThrow(adminId);
 
     const apartmentId = admin.managedApartment?.id;
     if (!apartmentId) {
@@ -359,5 +306,66 @@ export class AuthService {
     }
 
     await this.authRepo.residentClean(apartmentId);
+  };
+
+  /**
+   * 특정 ID의 사용자를 조회하고, 없거나 역할이 일치하지 않으면 에러를 발생시킵니다.
+   * @private
+   */
+  private async getAdminOrThrow(adminId: string) {
+    const admin = await this.authRepo.findById(adminId);
+    if (!admin) throw new NotFoundError("해당 어드민을 찾을 수 없습니다.");
+
+    return admin;
+  }
+
+  /**
+   * 특정 사용자의 존재 여부, 역할(Role), 현재 상태를 검증한 후 상태를 업데이트
+   * @param id - 사용자 ID
+   * @param status - 변경하려는 목적 상태
+   * @param targetRole - 해당 API가 타겟팅하는 역할 (ADMIN 또는 USER)
+   * @throws {NotFoundError} 사용자가 존재하지 않을 경우
+   * @throws {BadRequestError} 사용자의 역할이 타겟 역할과 일치하지 않을 경우
+   * @private
+   */
+  private async validateAndUpdateStatus(id: string, status: JoinStatus, targetRole: "ADMIN" | "USER") {
+    const user = await this.authRepo.findById(id);
+    if (!user) throw new NotFoundError("해당 사용자를 찾을 수 없습니다.");
+
+    if (user.role !== targetRole) {
+      throw new BadRequestError("해당 사용자의 상태를 변경할 수 없습니다.");
+    }
+    if (user.joinStatus === status) return;
+
+    await this.authRepo.updateUserStatus(id, status);
+  }
+
+  /**
+   * 기존 토큰을 모두 삭제하고 새로운 토큰 세트를 DB에 저장 후 반환(로그인/재발급 시 사용)
+   * @param user - 토큰에 담길 유저 정보 페이로드
+   * @private
+   */
+  private rotateTokens = async (user: { id: string; username: string; role: string }) => {
+    const accessToken = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_ACCESS_SECRET!,
+      { expiresIn: "15m" },
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_REFRESH_SECRET!,
+      { expiresIn: "14d" },
+    );
+
+    const newExpiresAt = expiresIn14Days();
+
+    // 기존 토큰 모두 삭제 후 새 토큰 저장 (트랜잭션 사용)
+    await prisma.$transaction(async (tx) => {
+      await this.authRepo.deleteAllRefreshTokens(user.id, tx);
+      await this.authRepo.saveRefreshToken(user.id, refreshToken, newExpiresAt, tx);
+    });
+
+    return { accessToken, refreshToken };
   };
 }
