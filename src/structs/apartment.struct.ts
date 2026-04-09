@@ -28,7 +28,7 @@ export const validateApartmentAdminQuery = (
   if (typeof name === "string" && name.trim()) result.name = name.trim();
   if (typeof address === "string" && address.trim()) result.address = address.trim();
   if (typeof searchKeyword === "string" && searchKeyword.trim()) result.searchKeyword = searchKeyword.trim();
-  if (apartmentStatus) result.apartmentStatus = apartmentStatus as ApartmentAdminQuery["apartmentStatus"];
+  if (apartmentStatus) result.apartmentStatus = apartmentStatus as "PENDING" | "APPROVED" | "REJECTED";
   if (page) result.page = Number(page);
   if (limit) result.limit = Number(limit);
   return result;

@@ -1,10 +1,12 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 // ESM 모드에서는 unstable_mockModule + dynamic import 조합 사용
-const findApartmentsPublicMock = jest.fn();
-const findApartmentPublicByIdMock = jest.fn();
-const findApartmentsMock = jest.fn();
-const findApartmentByIdMock = jest.fn();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFn = (...args: any[]) => any;
+const findApartmentsPublicMock = jest.fn() as jest.MockedFunction<AnyFn>;
+const findApartmentPublicByIdMock = jest.fn() as jest.MockedFunction<AnyFn>;
+const findApartmentsMock = jest.fn() as jest.MockedFunction<AnyFn>;
+const findApartmentByIdMock = jest.fn() as jest.MockedFunction<AnyFn>;
 
 jest.unstable_mockModule('../src/repositories/apartment.repository', () => ({
   findApartmentsPublic: findApartmentsPublicMock,
