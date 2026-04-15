@@ -53,7 +53,7 @@
               "raw": "{\n  \"username\": \"adminuser1\",\n  \"password\": \"password123!\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "로그인 성공 시 accessToken/refreshToken이 httpOnly 쿠키로 저장됩니다. 이후 요청에 자동으로 포함됩니다."
+            "description": "로그인 성공 시 accessToken/refreshToken이 httpOnly 쿠키로 저장됩니다."
           }
         }
       ]
@@ -81,9 +81,7 @@
               "raw": "{{baseUrl}}/api/apartments/public?keyword=강남",
               "host": ["{{baseUrl}}"],
               "path": ["api", "apartments", "public"],
-              "query": [
-                { "key": "keyword", "value": "강남" }
-              ]
+              "query": [{ "key": "keyword", "value": "강남" }]
             }
           }
         },
@@ -95,9 +93,7 @@
               "raw": "{{baseUrl}}/api/apartments/public?name=테스트",
               "host": ["{{baseUrl}}"],
               "path": ["api", "apartments", "public"],
-              "query": [
-                { "key": "name", "value": "테스트" }
-              ]
+              "query": [{ "key": "name", "value": "테스트" }]
             }
           }
         },
@@ -109,9 +105,7 @@
               "raw": "{{baseUrl}}/api/apartments/public?address=서울",
               "host": ["{{baseUrl}}"],
               "path": ["api", "apartments", "public"],
-              "query": [
-                { "key": "address", "value": "서울" }
-              ]
+              "query": [{ "key": "address", "value": "서울" }]
             }
           }
         }
@@ -140,8 +134,7 @@
               "raw": "{{baseUrl}}/api/apartments/public/nonexistent-id",
               "host": ["{{baseUrl}}"],
               "path": ["api", "apartments", "public", "nonexistent-id"]
-            },
-            "description": "404 에러 응답을 확인합니다."
+            }
           }
         }
       ]
@@ -240,7 +233,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "apartments", "{{apartmentId}}"]
             },
-            "description": "인증 필요 (쿠키 자동 포함). dongRange, hoRange, 관리자 정보 포함 반환."
+            "description": "인증 필요. dongRange, hoRange, 관리자 정보 포함 반환."
           }
         },
         {
@@ -251,8 +244,7 @@
               "raw": "{{baseUrl}}/api/apartments/nonexistent-id",
               "host": ["{{baseUrl}}"],
               "path": ["api", "apartments", "nonexistent-id"]
-            },
-            "description": "404 에러 응답을 확인합니다."
+            }
           }
         },
         {

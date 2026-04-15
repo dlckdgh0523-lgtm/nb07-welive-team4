@@ -54,6 +54,7 @@ model User {
   complaints Complaint[] @relation("UserComplaints")
   polls      Poll[]      @relation("UserPolls")
   notices    Notice[]    @relation("UserNotices")
+  votes      Vote[]      @relation("UserVotes")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -170,6 +171,7 @@ model Poll {
   author              User        @relation("UserPolls", fields: [authorId], references: [id])
 
   options             PollOption[]
+  votes               Vote[]
 
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -182,8 +184,22 @@ model PollOption {
   // 관계 설정
   pollId      String
   poll        Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes       Vote[]
 
   createdAt   DateTime @default(now())
+}
+
+model Vote {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation("UserVotes", fields: [userId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, pollId])
 }
 
 enum NoticeCategory {

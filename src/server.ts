@@ -2,11 +2,13 @@ import "dotenv/config";
 import { getEnv } from "./config/env";
 import { db } from "./lib/db";
 import app from "./app";
+import { startPollScheduler } from "./utils/poll.scheduler";
 
 const env = getEnv();
 
 const server = app.listen(env.PORT, "0.0.0.0", () => {
   console.log(`[BOOT] api is running on port ${env.PORT}`);
+  startPollScheduler();
 });
 
 server.on("listening", () => {

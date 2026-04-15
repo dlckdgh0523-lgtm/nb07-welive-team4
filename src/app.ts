@@ -8,6 +8,8 @@ import dbRouter from "./routes/db.route";
 import authRouter from "./routes/auth.route";
 import userRouter from "./routes/user.route";
 import apartmentRouter from "./routes/apartment.routes";
+import pollRouter from "./routes/poll.routes";
+import optionRouter from "./routes/option.routes";
 import { setupSwagger } from "./docs/swagger";
 import { errorHandler } from "./middlewares/errorHandler";
 
@@ -47,6 +49,13 @@ app.use("/api", dbRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/apartments", apartmentRouter);
+app.use("/api/polls", pollRouter);
+app.use("/api/options", optionRouter);
+
+app.get("/api/poll-scheduler/ping", (_req, res) => {
+  res.status(200).json({ message: "Poll scheduler is running." });
+});
+
 app.use(errorHandler);
 
 app.use((_req: Request, res: Response) => {
