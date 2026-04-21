@@ -99,7 +99,6 @@ jobs:
             -e DB_PASSWORD=test \
             -e DB_SSL=false \
             -e REDIS_URL=redis://127.0.0.1:6379 \
-            
             advanced-backend
       - name: Wait and check health
         run: |
