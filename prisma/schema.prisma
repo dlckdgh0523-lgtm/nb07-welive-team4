@@ -10,6 +10,7 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
 enum Role {
   USER
   ADMIN
@@ -24,37 +25,31 @@ enum JoinStatus {
 }
 
 model User {
-  id                String   @id @default(uuid())
-  email             String   @unique
-  username          String   @unique
-  contact           String   @unique
-  password          String
-  name              String
-  avatar            String?
-  role              Role     @default(USER)
-  // 승인상태
-  joinStatus        JoinStatus @default(PENDING)
+  id         String     @id @default(uuid())
+  email      String     @unique
+  username   String     @unique
+  contact    String     @unique
+  password   String
+  name       String
+  avatar     String?
+  role       Role       @default(USER)
+  joinStatus JoinStatus @default(PENDING)
+  isActive   Boolean    @default(true)
 
-  // 계정 활성화 여부
-  isActive          Boolean  @default(true)
+  apartmentName String?
+  apartmentDong String?
+  apartmentHo   String?
 
-  // 일반 유저용 정보
-  apartmentName     String?
-  apartmentDong     String? 
-  apartmentHo       String?
-
-  // 자신이 관리하는 아파트(Admin 전용)
-  managedApartment  Apartment? @relation("ApartmentAdmin")
-
-  // 자신이 거주하는 아파트(User 전용)
-  residenceApartment Apartment? @relation("ApartmentResidents", fields: [residentApartmentId], references: [id])
+  managedApartment    Apartment? @relation("ApartmentAdmin")
+  residenceApartment  Apartment? @relation("ApartmentResidents", fields: [residentApartmentId], references: [id])
   residentApartmentId String?
 
   refreshTokens RefreshToken[]
-  complaints Complaint[] @relation("UserComplaints")
-  polls      Poll[]      @relation("UserPolls")
-  notices    Notice[]    @relation("UserNotices")
-  votes      Vote[]      @relation("UserVotes")
+  complaints    Complaint[]    @relation("UserComplaints")
+  polls         Poll[]         @relation("UserPolls")
+  notices       Notice[]       @relation("UserNotices")
+  votes         Vote[]         @relation("UserVotes")
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -80,33 +75,29 @@ enum ApartMentStatus {
 }
 
 model Apartment {
-  id                  String   @id @default(uuid())
-  name                String
-  address             String
-  officeNumber        String
-  description         String
-  startComplexNumber  String
-  endComplexNumber    String
-  startDongNumber     String
-  endDongNumber       String
-  startFloorNumber    String
-  endFloorNumber      String
-  startHoNumber       String
-  endHoNumber         String
-  apartmentStatus     ApartMentStatus @default(PENDING)
+  id                 String          @id @default(uuid())
+  name               String
+  address            String
+  officeNumber       String
+  description        String
+  startComplexNumber String
+  endComplexNumber   String
+  startDongNumber    String
+  endDongNumber      String
+  startFloorNumber   String
+  endFloorNumber     String
+  startHoNumber      String
+  endHoNumber        String
+  apartmentStatus    ApartMentStatus @default(PENDING)
 
-  // 관리자 관계 (1:1)
-  admin              User     @relation("ApartmentAdmin", fields: [adminId], references: [id])
-  adminId            String   @unique 
+  admin   User   @relation("ApartmentAdmin", fields: [adminId], references: [id])
+  adminId String @unique
 
-  // 거주자 관계 (1:N)
-  residents          User[]   @relation("ApartmentResidents")
+  residents User[]  @relation("ApartmentResidents")
+  boards    Board[]
 
-  // 아파트 게시판 관계
-  boards             Board[]
-
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum BoardType {
@@ -116,37 +107,35 @@ enum BoardType {
 }
 
 model Board {
-  id          String  @id @default (uuid())
-  name        String
-  type        BoardType
+  id   String    @id @default(uuid())
+  name String
+  type BoardType
 
-  // 관계 설정
   apartmentId String
   apartment   Apartment @relation(fields: [apartmentId], references: [id])
 
-  complaints  Complaint[]
-  polls       Poll[]
-  notices     Notice[]
+  complaints Complaint[]
+  polls      Poll[]
+  notices    Notice[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Complaint {
-  id          String     @id @default(uuid())
-  title       String
-  content     String
-  isPublic    Boolean  @default(false)
+  id       String  @id @default(uuid())
+  title    String
+  content  String
+  isPublic Boolean @default(false)
 
-  // 관계
-  boardId     String
-  board       Board    @relation(fields: [boardId], references: [id])
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
 
-  authorId    String
-  author      User     @relation("UserComplaints", fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation("UserComplaints", fields: [authorId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum PollStatus {
@@ -156,37 +145,36 @@ enum PollStatus {
 }
 
 model Poll {
-  id                  String      @id @default(uuid())
-  status              PollStatus  @default(PENDING)
-  title               String
-  content             String
-  buildingPermission  Int         @default(0)
-  startDate           DateTime // 투표 시작 날짜
-  endDate             DateTime // 투표 종료 날짜
+  id                 String     @id @default(uuid())
+  status             PollStatus @default(PENDING)
+  title              String
+  content            String
+  buildingPermission Int        @default(0)
+  startDate          DateTime
+  endDate            DateTime
 
-  // 관계 설정
-  boardId             String
-  board               Board       @relation(fields: [boardId], references: [id])
-  authorId            String
-  author              User        @relation("UserPolls", fields: [authorId], references: [id])
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
 
-  options             PollOption[]
-  votes               Vote[]
+  authorId String
+  author   User   @relation("UserPolls", fields: [authorId], references: [id])
 
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  options PollOption[]
+  votes   Vote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PollOption {
-  id          String  @id @default(uuid())
-  title       String // 옵션 제목 (예: 항목 1, 항목 2 등)
+  id    String @id @default(uuid())
+  title String
 
-  // 관계 설정
-  pollId      String
-  poll        Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  votes       Vote[]
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes  Vote[]
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Vote {
@@ -211,21 +199,43 @@ enum NoticeCategory {
   ETC
 }
 
+enum NotificationType {
+  COMPLAINT_RESOLVED
+  NOTICE_CREATED
+  POLL_CREATED
+}
+
+model Notification {
+  notificationId   String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content          String
+  notificationType NotificationType
+  isChecked        Boolean          @default(false)
+  dedupeKey        String?          @unique
+  complaintId      String?
+  noticeId         String?
+  pollId           String?
+  notifiedAt       DateTime         @default(now())
+
+  @@index([userId])
+}
+
 model Notice {
-  id          String   @id @default(uuid())
-  category    NoticeCategory
-  title       String
-  content     String
-  isPinned    Boolean  @default(false)
-  startDate   DateTime?
-  endDate     DateTime?
+  id        String         @id @default(uuid())
+  category  NoticeCategory
+  title     String
+  content   String
+  isPinned  Boolean        @default(false)
+  startDate DateTime?
+  endDate   DateTime?
 
-  // 관계 설정
-  boardId     String
-  board       Board    @relation(fields: [boardId], references: [id])
-  authorId    String
-  author      User     @relation("UserNotices", fields: [authorId], references: [id])
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  authorId String
+  author   User   @relation("UserNotices", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

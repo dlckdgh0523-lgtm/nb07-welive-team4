@@ -23,11 +23,21 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10  
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/testdb
+      REDIS_URL: redis://127.0.0.1:6379
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -59,8 +69,17 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Build Docker image
         run: docker build -t advanced-backend .
       - name: Run container
@@ -79,6 +98,7 @@ jobs:
             -e DB_USER=test \
             -e DB_PASSWORD=test \
             -e DB_SSL=false \
+            -e REDIS_URL=redis://127.0.0.1:6379 \
             advanced-backend
       - name: Wait and check health
         run: |
