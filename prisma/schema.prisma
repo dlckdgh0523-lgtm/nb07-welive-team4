@@ -25,34 +25,34 @@ enum JoinStatus {
 }
 
 model User {
-  id                  String        @id @default(uuid())
-  email               String        @unique
-  username            String        @unique
-  contact             String        @unique
-  password            String
-  name                String
-  avatar              String?
-  role                Role          @default(USER)
-  joinStatus          JoinStatus    @default(PENDING)
-  isActive            Boolean       @default(true)
+  id         String     @id @default(uuid())
+  email      String     @unique
+  username   String     @unique
+  contact    String     @unique
+  password   String
+  name       String
+  avatar     String?
+  role       Role       @default(USER)
+  joinStatus JoinStatus @default(PENDING)
+  isActive   Boolean    @default(true)
 
-  apartmentName       String?
-  apartmentDong       String?
-  apartmentHo         String?
+  apartmentName String?
+  apartmentDong String?
+  apartmentHo   String?
 
-  managedApartment    Apartment?    @relation("ApartmentAdmin")
-  residenceApartment  Apartment?    @relation("ApartmentResidents", fields: [residentApartmentId], references: [id])
+  managedApartment    Apartment? @relation("ApartmentAdmin")
+  residenceApartment  Apartment? @relation("ApartmentResidents", fields: [residentApartmentId], references: [id])
   residentApartmentId String?
 
-  refreshTokens       RefreshToken[]
-  complaints          Complaint[]   @relation("UserComplaints")
-  polls               Poll[]        @relation("UserPolls")
-  notices             Notice[]      @relation("UserNotices")
-  votes               Vote[]        @relation("UserVotes")
-  notifications       Notification[]
+  refreshTokens RefreshToken[]
+  complaints    Complaint[]    @relation("UserComplaints")
+  polls         Poll[]         @relation("UserPolls")
+  notices       Notice[]       @relation("UserNotices")
+  votes         Vote[]         @relation("UserVotes")
+  notifications Notification[]
 
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model RefreshToken {
@@ -75,7 +75,7 @@ enum ApartMentStatus {
 }
 
 model Apartment {
-  id                 String           @id @default(uuid())
+  id                 String          @id @default(uuid())
   name               String
   address            String
   officeNumber       String
@@ -88,16 +88,16 @@ model Apartment {
   endFloorNumber     String
   startHoNumber      String
   endHoNumber        String
-  apartmentStatus    ApartMentStatus  @default(PENDING)
+  apartmentStatus    ApartMentStatus @default(PENDING)
 
-  admin              User             @relation("ApartmentAdmin", fields: [adminId], references: [id])
-  adminId            String           @unique
+  admin   User   @relation("ApartmentAdmin", fields: [adminId], references: [id])
+  adminId String @unique
 
-  residents          User[]           @relation("ApartmentResidents")
-  boards             Board[]
+  residents User[]  @relation("ApartmentResidents")
+  boards    Board[]
 
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum BoardType {
@@ -107,35 +107,35 @@ enum BoardType {
 }
 
 model Board {
-  id          String      @id @default(uuid())
-  name        String
-  type        BoardType
+  id   String    @id @default(uuid())
+  name String
+  type BoardType
 
   apartmentId String
-  apartment   Apartment   @relation(fields: [apartmentId], references: [id])
+  apartment   Apartment @relation(fields: [apartmentId], references: [id])
 
-  complaints  Complaint[]
-  polls       Poll[]
-  notices     Notice[]
+  complaints Complaint[]
+  polls      Poll[]
+  notices    Notice[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Complaint {
-  id        String    @id @default(uuid())
-  title     String
-  content   String
-  isPublic  Boolean   @default(false)
+  id       String  @id @default(uuid())
+  title    String
+  content  String
+  isPublic Boolean @default(false)
 
-  boardId   String
-  board     Board     @relation(fields: [boardId], references: [id])
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
 
-  authorId  String
-  author    User      @relation("UserComplaints", fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation("UserComplaints", fields: [authorId], references: [id])
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum PollStatus {
@@ -145,36 +145,36 @@ enum PollStatus {
 }
 
 model Poll {
-  id                 String       @id @default(uuid())
-  status             PollStatus   @default(PENDING)
+  id                 String     @id @default(uuid())
+  status             PollStatus @default(PENDING)
   title              String
   content            String
-  buildingPermission Int          @default(0)
+  buildingPermission Int        @default(0)
   startDate          DateTime
   endDate            DateTime
 
-  boardId            String
-  board              Board        @relation(fields: [boardId], references: [id])
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
 
-  authorId           String
-  author             User         @relation("UserPolls", fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation("UserPolls", fields: [authorId], references: [id])
 
-  options            PollOption[]
-  votes              Vote[]
+  options PollOption[]
+  votes   Vote[]
 
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PollOption {
-  id        String     @id @default(uuid())
-  title     String
+  id    String @id @default(uuid())
+  title String
 
-  pollId    String
-  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  votes     Vote[]
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes  Vote[]
 
-  createdAt DateTime   @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Vote {
@@ -230,12 +230,12 @@ model Notice {
   startDate DateTime?
   endDate   DateTime?
 
-  boardId   String
-  board     Board          @relation(fields: [boardId], references: [id])
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
 
-  authorId  String
-  author    User           @relation("UserNotices", fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation("UserNotices", fields: [authorId], references: [id])
 
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
