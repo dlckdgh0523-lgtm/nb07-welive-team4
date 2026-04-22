@@ -49,4 +49,13 @@ export class UserRepo {
       data: data,
     });
   };
+
+  revokeUserAccess = async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+
+    await client.user.update({
+      where: { id },
+      data: { joinStatus: "REJECTED", isActive: false },
+    });
+  };
 }

@@ -19,11 +19,3 @@ export const calcHoRange = (
   end: endHo ?? "",
 });
 
-export const isVoteActive = (startDate: Date, endDate: Date): boolean => {
-  const now = new Date();
-  return now >= startDate && now <= endDate;
-};
-
-export const isPollEditable = (status: string): boolean => {
-  return status === "PENDING";
-};

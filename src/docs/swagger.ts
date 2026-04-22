@@ -1,6 +1,7 @@
 import swaggerUi from "swagger-ui-express";
 import type { Express } from "express";
 import { apartmentDocs } from "./apartment.docs";
+import { pollDocs } from "./poll.docs";
 
 const swaggerDocument = {
   openapi: "3.0.0",
@@ -20,6 +21,7 @@ const swaggerDocument = {
   },
   paths: {
     ...apartmentDocs,
+    ...pollDocs,
   },
 };
 

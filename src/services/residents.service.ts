@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { parse } from "csv-parse/sync";
 import { ResidentsRepo } from "../repositories/residents.repository";
 import { UserRepo } from "../repositories/user.repository";
-import { ApartRepo, findApartmentPublicById } from "../repositories/apartment.repository";
+import { findApartmentPublicById } from "../repositories/apartment.repository";
 import { CreateResidentDTO, GetResidentsQuery, UpdateResidentDTO } from "../structs/resident.struct";
 import { ResidentResponseDto } from "../models/resident.model";
 import { BadRequestError, ConflictError, NotFoundError } from "../errors/errors";
@@ -234,6 +234,19 @@ export class ResidentsService {
       }
 
       return new ResidentResponseDto(updatedResident);
+    });
+  };
+
+  deleteResident = async (residentId: string, apartmentId: string) => {
+    const resident = await this.residentsRepo.getResidentById(residentId, apartmentId);
+    if (!resident) throw new NotFoundError("해당 입주민을 찾을 수 없습니다.");
+
+    return await prisma.$transaction(async (tx) => {
+      if (resident.user) {
+        await this.userRepo.revokeUserAccess(resident.user.id, tx);
+      }
+
+      await this.residentsRepo.deleteResident(residentId, apartmentId, tx);
     });
   };
 }

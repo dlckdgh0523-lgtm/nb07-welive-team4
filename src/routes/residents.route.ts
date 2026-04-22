@@ -26,6 +26,12 @@ residentRoute.get("/file/template", residentsController.downloadResidentTemplate
 residentRoute.post("/from-file", uploadMiddleware.single("file"), residentsController.createResidentsFromFile);
 residentRoute.get("/file", validateData(GetResidentsStruct, "query"), residentsController.downloadResidentList);
 residentRoute.get("/:residentId", validateData(ResidentIdStruct, "params"), residentsController.getResidentById);
-residentRoute.patch("/:residentId", validateData(UpdateResidentStruct, "body"), residentsController.updateResident);
+residentRoute.patch(
+  "/:residentId",
+  validateData(ResidentIdStruct, "params"),
+  validateData(UpdateResidentStruct, "body"),
+  residentsController.updateResident,
+);
+residentRoute.delete("/:residentId", validateData(ResidentIdStruct, "params"), residentsController.deleteResident);
 
 export default residentRoute;

@@ -13,6 +13,7 @@
     "test:watch": "jest --watch",
     "test:cov": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --coverage --detectOpenHandles --forceExit --runInBand",
     "test:ci": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --ci --passWithNoTests --runInBand",
+    "test:notifications": "cross-env NODE_ENV=test jest --testPathPattern=\"queue.service|notification-dispatcher|notification-realtime|queue.api\" --no-coverage",
     "test:integration": "jest __tests__/integration"
   },
   "repository": {
@@ -28,14 +29,18 @@
   "homepage": "https://github.com/nb07-welive-team4/nb07-welive-team4#readme",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1022.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-node": "^0.215.0",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.75.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csv-parse": "^6.2.1",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "pg": "^8.20.0",

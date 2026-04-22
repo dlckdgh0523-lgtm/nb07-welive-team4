@@ -2,11 +2,28 @@ import "dotenv/config";
 import { getEnv } from "./config/env";
 import { db } from "./lib/db";
 import app from "./app";
+import { createRedisPub, createRedisSub } from "./lib/redis";
+import { createNotificationQueue } from "./queue/notification.queue";
+import { startNotificationWorker } from "./workers/notification.worker";
+import { initNotificationRealtime, subscribeNotificationChannel } from "./services/notification-realtime.service";
+import { startOtel, shutdownOtel } from "./lib/otel";
+import { startPollScheduler } from "./utils/poll.scheduler";
 
 const env = getEnv();
 
+startOtel();
+
+const redisPub = createRedisPub();
+const redisSub = createRedisSub();
+
+initNotificationRealtime(redisPub, redisSub);
+createNotificationQueue();
+startNotificationWorker();
+void subscribeNotificationChannel();
+
 const server = app.listen(env.PORT, "0.0.0.0", () => {
   console.log(`[BOOT] api is running on port ${env.PORT}`);
+  startPollScheduler();
 });
 
 server.on("listening", () => {
@@ -26,6 +43,9 @@ const shutdown = async (signal: string) => {
 
   server.close(async () => {
     try {
+      await shutdownOtel();
+      await redisPub.quit();
+      await redisSub.quit();
       await db.end();
       console.log("[DB] pool closed");
       process.exit(0);

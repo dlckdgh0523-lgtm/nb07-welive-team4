@@ -35,7 +35,7 @@ export const authorizeRole = (allowedRoles: $Enums.Role[]) => {
     if (!user) throw new UnauthorizedError("로그인이 필요합니다.");
 
     if (!allowedRoles.includes(user.role)) {
-      throw new UnauthorizedError("권한이 없습니다.");
+      throw new ForbiddenError("권한이 없습니다.");
     }
 
     if (user.role === "ADMIN" && !user.apartmentId) {

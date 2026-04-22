@@ -87,4 +87,13 @@ export class ResidentsController {
 
     res.status(200).json(updatedResident);
   };
+
+  deleteResident = async (req: Request<ResidentId>, res: Response) => {
+    const { residentId } = req.params;
+    const apartmentId = req.user.apartmentId!;
+
+    await this.residentsService.deleteResident(residentId, apartmentId);
+
+    res.status(204).end();
+  };
 }

@@ -81,7 +81,7 @@ export class ResidentsRepo {
 
   getResidentById = async (residentId: string, apartmentId: string) => {
     const resident = await prisma.resident.findUnique({
-      where: { id: residentId, apartmentId },
+      where: { id_apartmentId: { id: residentId, apartmentId } },
       include: { user: true },
     });
 
@@ -103,5 +103,13 @@ export class ResidentsRepo {
     });
 
     return resident;
+  };
+
+  deleteResident = async (residentId: string, apartmentId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+
+    await client.resident.delete({
+      where: { id_apartmentId: { id: residentId, apartmentId } },
+    });
   };
 }
