@@ -1,0 +1,48 @@
+name: Claude PR Review & Bug Detection
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Diff
+        run: git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+
+      - name: Claude Review & Bug Detection
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DIFF=$(cat diff.txt)
+          
+          REVIEW=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg diff "$DIFF" \
+              '{
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 2048,
+                messages: [{
+                  role: "user",
+                  content: ("너는 시니어 백엔드 개발자야. NestJS + Prisma + PostgreSQL + Redis 스택 기준으로 아래 PR을 분석해줘.\n\n### 📝 코드 리뷰\n(코드 품질, 가독성, 구조)\n\n### 🐛 버그 탐지\n(잠재적 버그, 엣지케이스 - 없으면 발견된 버그 없음)\n\n### ✅ 개선 제안\n(선택적 개선사항)\n\n## 변경사항\n" + $diff)
+                }]
+              }')" | jq -r '.content[0].text')
+          
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "## 🤖 Claude AI Review\n\n${REVIEW}\n\n---\n*Powered by Claude AI*"

@@ -6,6 +6,8 @@ services:
       - "4000:4000"
     env_file:
       - .env
+    depends_on:
+      - redis
     restart: unless-stopped
     stop_grace_period: 10s
     healthcheck:
@@ -19,3 +21,19 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: advanced-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:

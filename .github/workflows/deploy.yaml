@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      
 
 permissions:
   id-token: write
@@ -22,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -31,6 +32,55 @@ jobs:
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
+
+      #  1. 보안 체크
+      - name: Security Check (Claude)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          DOCKERFILE=$(cat Dockerfile)
+
+          RESULT=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg dockerfile "$DOCKERFILE" \
+              '{
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 1024,
+                messages: [{
+                  role: "user",
+                  content: ("아래 Dockerfile을 보안 관점에서 분석해줘.\n체크 항목:\n1. 하드코딩된 API키, 비밀번호, 토큰\n2. root 권한으로 실행 여부\n3. 불필요한 포트 노출\n4. 취약한 베이스 이미지\n5. 민감한 파일 복사 여부\n\n결과를 JSON으로만 반환해줘. 다른 텍스트 없이 JSON만:\n{\"safe\": true/false, \"issues\": [\"이슈1\"], \"summary\": \"한줄요약\"}\n\nDockerfile:\n" + $dockerfile)
+                }]
+              }')" | jq -r '.content[0].text')
+
+          IS_SAFE=$(echo $RESULT | jq -r '.safe')
+          SUMMARY=$(echo $RESULT | jq -r '.summary')
+          ISSUES=$(echo $RESULT | jq -r '.issues | join("\n")')
+
+          if [ "$IS_SAFE" = "false" ]; then
+            curl -s -X POST "$SLACK_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n \
+                --arg summary "$SUMMARY" \
+                --arg issues "$ISSUES" \
+                '{
+                  text: " *보안 경고 - 배포 중단*",
+                  attachments: [{
+                    color: "danger",
+                    fields: [
+                      {title: "요약", value: $summary, short: false},
+                      {title: "발견된 이슈", value: $issues, short: false}
+                    ]
+                  }]
+                }')"
+            echo " 보안 이슈 발견 - 배포 중단"
+            exit 1
+          else
+            echo " 보안 체크 통과"
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -68,9 +118,6 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
           set -euo pipefail
-          test -n "$SSH_USER" || { echo "SSH_USER secret is missing"; exit 1; }
-          test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
-
           ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'mkdir -p ~/deploy/nb07-welive-team4'
           scp -i ~/.ssh/id_rsa compose.yaml deploy.sh "$SSH_USER@$SSH_HOST:~/deploy/nb07-welive-team4/"
           ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'chmod +x ~/deploy/nb07-welive-team4/deploy.sh'
@@ -81,6 +128,143 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
           set -euo pipefail
-          test -n "$SSH_USER" || { echo "SSH_USER secret is missing"; exit 1; }
-          test -n "$SSH_HOST" || { echo "SSH_HOST secret is missing"; exit 1; }
           ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'bash ~/deploy/nb07-welive-team4/deploy.sh'
+
+      #  2. CloudWatch 로그 이상 감지
+      - name: CloudWatch Log Analysis (Claude)
+        if: success()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          sleep 30
+
+          LOGS=$(aws logs filter-log-events \
+            --log-group-name "/ec2/docker/containers" \
+            --start-time $(date -d '5 minutes ago' +%s000) \
+            --filter-pattern "ERROR" \
+            --region ap-northeast-2 \
+            --query 'events[*].message' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$LOGS" ]; then
+            echo " 에러 로그 없음"
+            exit 0
+          fi
+
+          ANALYSIS=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg logs "$LOGS" \
+              '{
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 512,
+                messages: [{
+                  role: "user",
+                  content: ("배포 직후 아래 에러 로그가 발생했어. 원인과 해결방법을 간결하게 알려줘:\n\n" + $logs)
+                }]
+              }')" | jq -r '.content[0].text')
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg analysis "$ANALYSIS" \
+              --arg logs "$LOGS" \
+              '{
+                text: " *배포 후 에러 로그 감지*",
+                attachments: [{
+                  color: "warning",
+                  fields: [
+                    {title: "Claude 분석", value: $analysis, short: false},
+                    {title: "원본 로그", value: $logs, short: false}
+                  ]
+                }]
+              }')"
+
+      #  3. 배포 성공 알림 + 변경사항 요약
+      - name: Success Notification (Claude)
+        if: success()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          DIFF=$(git log -1 --pretty=format:"%s" && git diff HEAD~1 HEAD --stat)
+
+          SUMMARY=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg diff "$DIFF" \
+              '{
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 512,
+                messages: [{
+                  role: "user",
+                  content: ("아래 배포된 변경사항을 3줄 이내로 bullet point로 요약해줘:\n\n" + $diff)
+                }]
+              }')" | jq -r '.content[0].text')
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg summary "$SUMMARY" \
+              --arg actor "${{ github.actor }}" \
+              --arg sha "${{ github.sha }}" \
+              --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{
+                text: " *배포 성공* - EC2",
+                attachments: [{
+                  color: "good",
+                  fields: [
+                    {title: "배포자", value: $actor, short: true},
+                    {title: "커밋", value: $sha[:7], short: true},
+                    {title: "변경사항 요약", value: $summary, short: false},
+                    {title: "액션 로그", value: $run_url, short: false}
+                  ]
+                }]
+              }')"
+
+      #  4. 배포 실패 원인 분석
+      - name: Failure Analysis (Claude)
+        if: failure()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          FAIL_INFO="Workflow: ${{ github.workflow }}\nJob: ${{ github.job }}\nCommit: ${{ github.sha }}\nActor: ${{ github.actor }}\nRef: ${{ github.ref }}"
+
+          ANALYSIS=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg info "$FAIL_INFO" \
+              '{
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 512,
+                messages: [{
+                  role: "user",
+                  content: ("GitHub Actions 배포가 실패했어. 아래 정보를 보고 가능한 원인과 해결방법을 간결하게 알려줘:\n\n" + $info)
+                }]
+              }')" | jq -r '.content[0].text')
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg analysis "$ANALYSIS" \
+              --arg actor "${{ github.actor }}" \
+              --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{
+                text: " *배포 실패* - EC2",
+                attachments: [{
+                  color: "danger",
+                  fields: [
+                    {title: "배포자", value: $actor, short: true},
+                    {title: "액션 로그", value: $run_url, short: false},
+                    {title: "Claude 원인 분석", value: $analysis, short: false}
+                  ]
+                }]
+              }')"

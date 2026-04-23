@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 cd ~/deploy/nb07-welive-team4
+
+sudo docker compose config > /dev/null
 
 aws ecr get-login-password --region ap-northeast-2 \
 | sudo docker login --username AWS --password-stdin 022038146145.dkr.ecr.ap-northeast-2.amazonaws.com
