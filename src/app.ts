@@ -14,6 +14,7 @@ import pollRouter from "./routes/poll.routes";
 import optionRouter from "./routes/option.routes";
 import { setupSwagger } from "./docs/swagger";
 import { errorHandler } from "./middlewares/errorHandler";
+import residentRoute from "./routes/residents.route";
 
 const env = getEnv();
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api", uploadRouter);
 app.use("/api", dbRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
+app.use("/api/residents", residentRoute);
 app.use("/api/apartments", apartmentRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/queue", queueRouter);

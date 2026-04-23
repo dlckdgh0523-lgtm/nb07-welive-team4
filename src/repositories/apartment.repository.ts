@@ -67,7 +67,7 @@ export const findApartments = async (filters: ApartmentAdminQuery & { page: numb
       skip: getSkip(page, limit),
       take: limit,
       include: {
-        admin: { select: { name: true, contact: true, email: true } },
+        admin: { select: { id: true, name: true, contact: true, email: true } },
       },
     }),
     prisma.apartment.count({ where }),
@@ -81,14 +81,8 @@ export const findApartmentById = async (id: string) => {
   return prisma.apartment.findUnique({
     where: { id },
     include: {
-      admin: { select: { name: true, contact: true, email: true } },
+      admin: { select: { id: true, name: true, contact: true, email: true } },
     },
-  });
-};
-
-export const deleteApartmentsById = async (ids: string[], tx: Prisma.TransactionClient) => {
-  await tx.apartment.deleteMany({
-    where: { id: { in: ids } },
   });
 };
 
@@ -111,10 +105,12 @@ export class ApartRepo {
 
   //아파트 이름으로 ID 조회
   getApartmentId = async (name: string) => {
-    return await prisma.apartment.findFirst({
+    const apartmentId = await prisma.apartment.findFirst({
       where: { name },
       select: { id: true },
     });
+
+    return apartmentId?.id || null;
   };
 
   // super-admin이 admin 정보 수정시 아파트 정보도 함께 수정
@@ -134,6 +130,8 @@ export class ApartRepo {
 
   // admin 승인 거절 계정 정리시 admin이 가입시 저장한 아파트 정보 함께 삭제(여러개)
   deleteApartmentsById = async (ids: string[], tx: Prisma.TransactionClient) => {
-    await deleteApartmentsById(ids, tx);
+    await tx.apartment.deleteMany({
+      where: { id: { in: ids } },
+    });
   };
 }

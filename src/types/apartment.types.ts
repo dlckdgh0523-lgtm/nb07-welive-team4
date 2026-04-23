@@ -39,12 +39,11 @@ export interface ApartmentAdminItem {
   startHoNumber: string;
   endHoNumber: string;
   apartmentStatus: ApartmentStatus;
-  adminId: string;
+  adminId: string | null;
   adminName: string | null;
   adminContact: string | null;
   adminEmail: string | null;
 }
-
 
 export interface ApartmentListPublicResponse {
   apartments: ApartmentPublicItem[];
@@ -55,7 +54,6 @@ export interface ApartmentListAdminResponse {
   apartments: ApartmentAdminItem[];
   totalCount: number;
 }
-
 
 export interface ApartmentPublicQuery {
   keyword?: string;

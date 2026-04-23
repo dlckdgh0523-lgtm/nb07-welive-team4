@@ -11,5 +11,4 @@ export interface CreateApartDto {
   endFloorNumber: string;
   startHoNumber: string;
   endHoNumber: string;
-  adminId: string;
 }

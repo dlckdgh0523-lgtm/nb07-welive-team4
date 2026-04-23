@@ -9,7 +9,12 @@ export const validateData = <T>(struct: Struct<T>, target: "body" | "query" | "p
       return next(err);
     }
 
-    (req as any)[target] = validated;
+    Object.defineProperty(req, target, {
+      value: validated,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
 
     next();
   };

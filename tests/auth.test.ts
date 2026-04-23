@@ -295,9 +295,11 @@ describe("Auth 도메인 통합 테스트", () => {
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("작업이 성공적으로 완료되었습니다.");
 
-      const updateApart = await prisma.apartment.findUnique({
-        where: { adminId: targetAdminId! },
+      const userWithApart = await prisma.user.findUnique({
+        where: { id: targetAdminId! },
+        select: { managedApartment: true },
       });
+      const updateApart = userWithApart?.managedApartment;
 
       expect(updateApart?.description).toBe("아파트 업데이트 테스트");
       expect(updateApart?.name).toBe("업데이트 아파트");

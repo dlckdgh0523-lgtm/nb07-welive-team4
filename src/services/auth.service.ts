@@ -1,6 +1,7 @@
 import { CreateUserType, CreateAdmin, CreateSuperAdmin, LoginData, UpdateAdminInfo } from "../structs/auth.struct";
 import { AuthRepo } from "../repositories/auth.repository";
 import { ApartRepo } from "../repositories/apartment.repository";
+import { ResidentsRepo } from "../repositories/residents.repository";
 import { BadRequestError, NotFoundError, UnauthorizedError, ConflictError } from "../errors/errors";
 import { LoginResponseDto } from "../models/auth.model";
 import bcrypt from "bcrypt";
@@ -12,14 +13,9 @@ import { JoinStatus } from "@prisma/client";
 export class AuthService {
   private authRepo = new AuthRepo();
   private apartRepo = new ApartRepo();
+  private residentsRepo = new ResidentsRepo();
 
-  /**
-   * 유저의 역할(USER, ADMIN, SUPER_ADMIN)에 따라 차별화된 회원가입 로직을 수행
-   * @param data - 회원가입에 필요한 데이터 객체
-   * @throws {NotFoundError} 아파트 정보가 DB에 없을 경우 발생 (USER 권한 가입 시)
-   * @returns 가입 완료된 유저 정보
-   */
-  register = async (data: CreateUserType | CreateAdmin | CreateSuperAdmin) => {
+  private async prepareRegistration(data: CreateUserType | CreateAdmin | CreateSuperAdmin) {
     const [existingUsername, existingEmail, existingContract] = await Promise.all([
       this.authRepo.findUniqueUser({ username: data.username }),
       this.authRepo.findUniqueUser({ email: data.email }),
@@ -33,88 +29,126 @@ export class AuthService {
     const saltRound = 10;
     const hashedPassword = await bcrypt.hash(data.password, saltRound);
 
-    const commonData = {
-      username: data.username,
-      password: hashedPassword,
-      contact: data.contact,
-      name: data.name,
-      email: data.email,
-    };
+    return hashedPassword;
+  }
 
-    // 일반 유저 가입 로직
-    if (data.role === "USER") {
-      const apartmentId = await this.apartRepo.getApartmentId(data.apartmentName);
-      if (!apartmentId) {
-        throw new NotFoundError(`해당 아파트가 존재하지 않습니다.`);
+  createUser = async (data: CreateUserType) => {
+    const hashedPassword = await this.prepareRegistration(data);
+
+    const apartmentId = await this.apartRepo.getApartmentId(data.apartmentName);
+    if (!apartmentId) {
+      throw new NotFoundError(`해당 아파트가 존재하지 않습니다.`);
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const isAlreadyJoined = await this.residentsRepo.checkHouseholderjoined(
+        apartmentId,
+        data.apartmentDong,
+        data.apartmentHo,
+        tx,
+      );
+      if (isAlreadyJoined) {
+        throw new ConflictError("이미 해당 호수에 가입된 세대주가 존재합니다.");
       }
 
-      const user = await this.authRepo.createUser({
-        ...commonData,
-        role: "USER",
-        residentApartmentId: apartmentId.id,
-        apartmentName: data.apartmentName,
-        apartmentDong: data.apartmentDong,
-        apartmentHo: data.apartmentHo,
-      });
+      let resident = await this.residentsRepo.findByNameAndContact(data.name, data.contact, tx);
 
+      let joinStatus: "APPROVED" | "PENDING" = "PENDING";
+      const isRegistered = true;
+
+      if (resident) {
+        joinStatus = "APPROVED";
+        resident = await this.residentsRepo.updateIsRegistered(resident.id, isRegistered, tx);
+      } else {
+        resident = await this.residentsRepo.createResident(
+          {
+            building: data.apartmentDong,
+            unitNumber: data.apartmentHo,
+            contact: data.contact,
+            name: data.name,
+            isHouseholder: "HOUSEHOLDER",
+          },
+          apartmentId,
+          isRegistered,
+          tx,
+        );
+      }
+
+      const user = await this.authRepo.createUser(
+        {
+          email: data.email,
+          username: data.username,
+          password: hashedPassword,
+          contact: data.contact,
+          name: data.name,
+          residentId: resident.id,
+          role: "USER",
+          joinStatus,
+          apartmentName: data.apartmentName,
+          apartmentDong: data.apartmentDong,
+          apartmentHo: data.apartmentHo,
+        },
+        tx,
+      );
       return user;
-    }
+    });
+  };
 
-    // 아파트 관리자(ADMIN) 가입 로직 (아파트 정보 동시에 생성)
-    if (data.role === "ADMIN") {
-      return await prisma.$transaction(async (tx) => {
-        // 관리자 계정 생성
-        const createdAdmin = await this.authRepo.createUser(
-          {
-            ...commonData,
-            role: "ADMIN",
-          },
-          tx,
-        );
+  createAdmin = async (data: CreateAdmin) => {
+    const hashedPassword = await this.prepareRegistration(data);
 
-        // 해당 관리자가 관리하는 아파트 생성
-        const createdApartment = await this.apartRepo.createApart(
-          {
-            name: data.apartmentName,
-            address: data.apartmentAddress,
-            officeNumber: data.apartmentManagementNumber,
-            description: data.description,
-            startComplexNumber: data.startComplexNumber,
-            endComplexNumber: data.endComplexNumber,
-            startDongNumber: data.startDongNumber,
-            endDongNumber: data.endDongNumber,
-            startFloorNumber: data.startFloorNumber,
-            endFloorNumber: data.endFloorNumber,
-            startHoNumber: data.startHoNumber,
-            endHoNumber: data.endHoNumber,
-            adminId: createdAdmin.id,
-          },
-          tx,
-        );
+    return await prisma.$transaction(async (tx) => {
+      const apartment = await this.apartRepo.createApart(
+        {
+          name: data.apartmentName,
+          address: data.apartmentAddress,
+          officeNumber: data.apartmentManagementNumber,
+          description: data.description,
+          startComplexNumber: data.startComplexNumber,
+          endComplexNumber: data.endComplexNumber,
+          startDongNumber: data.startDongNumber,
+          endDongNumber: data.endDongNumber,
+          startFloorNumber: data.startFloorNumber,
+          endFloorNumber: data.endFloorNumber,
+          startHoNumber: data.startHoNumber,
+          endHoNumber: data.endHoNumber,
+        },
+        tx,
+      );
 
-        // 생성된 아파트 ID를 관리자 계정에 업데이트
-        await this.authRepo.updateUser(createdAdmin.id, createdApartment.id, tx);
+      const admin = await this.authRepo.createUser(
+        {
+          email: data.email,
+          username: data.username,
+          password: hashedPassword,
+          contact: data.contact,
+          name: data.name,
+          role: "ADMIN",
+          joinStatus: "PENDING",
+          apartmentId: apartment.id,
+        },
+        tx,
+      );
+      return admin;
+    });
+  };
 
-        return createdAdmin;
-      });
-    }
+  createSuperAdmin = async (data: CreateSuperAdmin) => {
+    const hashedPassword = await this.prepareRegistration(data);
 
-    // 시스템 통합 관리자(SUPER_ADMIN) 가입 로직
-    if (data.role === "SUPER_ADMIN") {
-      const superAdmin = await this.authRepo.createUser({
-        ...commonData,
-        role: "SUPER_ADMIN",
-        joinStatus: data.joinStatus,
-      });
-
-      return superAdmin;
-    }
+    const superAdmin = await this.authRepo.createUser({
+      ...data,
+      password: hashedPassword,
+      role: "SUPER_ADMIN",
+      joinStatus: "APPROVED",
+    });
+    return superAdmin;
   };
 
   /**
    * 사용자 로그인을 처리하고 새로운 Access/Refresh 토큰 세트를 발급
    * @param data - 로그인 입력 데이터 (username, password)
-   * @throws {UnauthorizedError} 아이디가 없거나 비밀번호가 틀린 경우 발생
+   * @throws {UnauthorizedError} 아이디가 없거나 비밀번호가 틀린 경우, 또는 가입 승인 대기/거절 상태인 경우 발생
    */
   login = async (data: LoginData) => {
     const user = await this.authRepo.findByUsername(data.username);
@@ -127,11 +161,28 @@ export class AuthService {
       throw new UnauthorizedError("아이디 또는 비밀번호가 일치하지 않습니다.");
     }
 
+    if (user.joinStatus === "PENDING") {
+      throw new UnauthorizedError("관리자의 승인 대기 중인 계정입니다.");
+    }
+
+    if (user.joinStatus === "REJECTED") {
+      throw new UnauthorizedError("관리자에 의해 가입이 거절된 계정입니다.");
+    }
+
+    let apartmentId: string | null = null;
+
+    if (user.role === "ADMIN") {
+      apartmentId = user.managedApartment?.id || null;
+    } else if (user.role === "USER") {
+      apartmentId = user.resident?.apartmentId || null;
+    }
+
     // 토큰 발급 및 기존 토큰 정리
     const { accessToken, refreshToken } = await this.rotateTokens({
       id: user.id,
       username: user.username,
       role: user.role,
+      apartmentId: apartmentId ?? undefined,
     });
 
     const userResponse = new LoginResponseDto(user);
@@ -205,7 +256,7 @@ export class AuthService {
    */
   bulkUpdateResidentStatus = async (userId: string, status: JoinStatus) => {
     const admin = await this.authRepo.findById(userId);
-    const apartmentId = admin?.residentApartmentId;
+    const apartmentId = admin?.managedApartment?.id;
 
     if (!admin || !apartmentId) {
       throw new NotFoundError("관리 중인 아파트 정보가 존재하지 않습니다.");
@@ -345,18 +396,22 @@ export class AuthService {
    * @param user - 토큰에 담길 유저 정보 페이로드
    * @private
    */
-  private rotateTokens = async (user: { id: string; username: string; role: string }) => {
-    const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_ACCESS_SECRET!,
-      { expiresIn: "15m" },
-    );
+  private rotateTokens = async (user: {
+    id: string;
+    username: string;
+    role: string;
+    apartmentId?: string | undefined;
+  }) => {
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      apartmentId: user.apartmentId,
+    };
 
-    const refreshToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_REFRESH_SECRET!,
-      { expiresIn: "14d" },
-    );
+    const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET!, { expiresIn: "15m" });
+
+    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, { expiresIn: "14d" });
 
     const newExpiresAt = expiresIn14Days();
 

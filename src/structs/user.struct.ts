@@ -10,5 +10,10 @@ export const UpdateProfileSchema = object({
   newPassword: optional(size(string(), 8, 100)),
 });
 
+export const UserIdParamStruct = object({
+  userId: string(),
+});
+
 export type ValidatePassword = Infer<typeof PasswordStruct>;
 export type UpdateProfileDto = Infer<typeof UpdateProfileSchema>;
+export type userIdParam = Infer<typeof UserIdParamStruct>;

@@ -20,11 +20,8 @@ export class UserDto {
 
 type UserWithRelations = Prisma.UserGetPayload<{
   include: {
-    residenceApartment: {
-      include: {
-        boards: true;
-      };
-    };
+    managedApartment: { include: { boards: true } };
+    resident: { include: { apartment: { include: { boards: true } } } };
   };
 }>;
 
@@ -54,18 +51,33 @@ export class LoginResponseDto {
     this.role = user.role;
     this.joinStatus = user.joinStatus;
     this.isActive = user.isActive;
-    this.apartmentId = user.residentApartmentId;
-    this.apartmentName = user.residenceApartment?.name || user.apartmentName;
-    this.residentDong = user.apartmentDong;
+    this.username = user.username;
+    this.contact = user.contact;
+    this.avatar = user.avatar;
 
-    const boards = user.residenceApartment?.boards || [];
+    // 역할에 따른 데이터 추출 분기
+    let targetApartment = null;
+
+    if (user.role === "ADMIN") {
+      targetApartment = user.managedApartment;
+      this.residentDong = null; // 어드민은 동 정보가 없음
+    } else if (user.role === "USER") {
+      targetApartment = user.resident?.apartment || null;
+      this.residentDong = user.resident?.building || null; // Resident 테이블의 building 필드 사용
+    } else {
+      targetApartment = null;
+      this.residentDong = null;
+    }
+
+    // 아파트 및 게시판 정보 매핑
+    this.apartmentId = targetApartment?.id || null;
+    this.apartmentName = targetApartment?.name || null;
+
+    const boards = targetApartment?.boards || [];
     this.boardIds = {
       COMPLAINT: boards.find((b) => b.type === "COMPLAINT")?.id || "",
       NOTICE: boards.find((b) => b.type === "NOTICE")?.id || "",
       POLL: boards.find((b) => b.type === "POLL")?.id || "",
     };
-    this.username = user.username;
-    this.contact = user.contact;
-    this.avatar = user.avatar;
   }
 }

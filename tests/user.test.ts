@@ -42,19 +42,7 @@ describe("User 도메인 통합 테스트", () => {
 
     const adminUsername = "test_admin_unique";
 
-    const adminUser = await prisma.user.create({
-      data: {
-        username: adminUsername,
-        password: await bcrypt.hash("password123!", 10),
-        name: "아파트관리자",
-        email: "admin@test.com",
-        contact: "010-1111-2222",
-        role: "ADMIN",
-        joinStatus: "APPROVED",
-      },
-    });
-
-    await prisma.apartment.create({
+    const testApartment = await prisma.apartment.create({
       data: {
         name: testUser.apartmentName,
         address: "경상북도 구미시 송정동 123",
@@ -68,9 +56,19 @@ describe("User 도메인 통합 테스트", () => {
         endFloorNumber: "20",
         startHoNumber: "1",
         endHoNumber: "4",
-        admin: {
-          connect: { id: adminUser.id },
-        },
+      },
+    });
+
+    const adminUser = await prisma.user.create({
+      data: {
+        username: adminUsername,
+        password: await bcrypt.hash("password123!", 10),
+        name: "아파트관리자",
+        email: "admin@test.com",
+        contact: "010-1111-2222",
+        role: "ADMIN",
+        joinStatus: "APPROVED",
+        apartmentId: testApartment.id,
       },
     });
 

@@ -36,13 +36,17 @@ model User {
   joinStatus JoinStatus @default(PENDING)
   isActive   Boolean    @default(true)
 
-  apartmentName String?
-  apartmentDong String?
-  apartmentHo   String?
+  // 유저 전용 필드
+  apartmentName     String?  // 아파트 이름 (가입 시 입력)
+  apartmentDong     String?  // 아파트 동 (가입 시 입력)
+  apartmentHo       String?  // 아파트 호 (가입 시 입력)
 
-  managedApartment    Apartment? @relation("ApartmentAdmin")
-  residenceApartment  Apartment? @relation("ApartmentResidents", fields: [residentApartmentId], references: [id])
-  residentApartmentId String?
+  // 자신이 관리하는 아파트(Admin 전용)
+  apartmentId       String?   @unique
+  managedApartment  Apartment? @relation(fields: [apartmentId], references: [id])
+
+  residentId    String?   @unique
+  resident      Resident? @relation(fields: [residentId], references: [id], onDelete: SetNull)
 
   refreshTokens RefreshToken[]
   complaints    Complaint[]    @relation("UserComplaints")
@@ -53,6 +57,36 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum ResidenceStatus {
+  RESIDENCE
+  NO_RESIDENCE
+}
+
+enum IsHouseholder {
+  HOUSEHOLDER
+  MEMBER
+}
+
+model Resident {
+  id                String  @id @default(uuid())
+  building          String
+  unitNumber        String
+  contact           String  @unique
+  name              String
+  residenceStatus   ResidenceStatus @default(RESIDENCE)
+  isHouseholder     IsHouseholder @default(HOUSEHOLDER)
+  isRegistered      Boolean @default(false)
+
+  user              User?
+  apartmentId       String
+  apartment         Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, apartmentId])
 }
 
 model RefreshToken {
@@ -90,11 +124,13 @@ model Apartment {
   endHoNumber        String
   apartmentStatus    ApartMentStatus @default(PENDING)
 
-  admin   User   @relation("ApartmentAdmin", fields: [adminId], references: [id])
-  adminId String @unique
+  // 관리자 관계 (1:1)
+  admin        User?   @relation()
 
-  residents User[]  @relation("ApartmentResidents")
-  boards    Board[]
+  residents      Resident[]
+
+  // 아파트 게시판 관계
+  boards             Board[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
-import { create } from "superstruct";
 import {
   AdminId,
   ResidentId,
@@ -24,7 +23,7 @@ export class AuthController {
   createUser = async (req: Request<{}, {}, CreateUserType>, res: Response) => {
     const createUserData = req.body;
 
-    const user = await this.authService.register(createUserData);
+    const user = await this.authService.createUser(createUserData);
 
     res.status(201).json(user);
   };
@@ -35,7 +34,7 @@ export class AuthController {
    */
   createAdmin = async (req: Request<{}, {}, CreateAdmin>, res: Response) => {
     const createAdminDto = req.body;
-    const admin = await this.authService.register(createAdminDto);
+    const admin = await this.authService.createAdmin(createAdminDto);
 
     res.status(201).json(admin);
   };
@@ -46,7 +45,7 @@ export class AuthController {
    */
   createSuperAdmin = async (req: Request<{}, {}, CreateSuperAdmin>, res: Response) => {
     const createSuperAdminDto = req.body;
-    const superAdmin = await this.authService.register(createSuperAdminDto);
+    const superAdmin = await this.authService.createSuperAdmin(createSuperAdminDto);
 
     res.status(201).json(superAdmin);
   };
