@@ -234,7 +234,7 @@ export class AuthRepo {
    */
   residentClean = async (apartmentId: string) => {
     await prisma.user.deleteMany({
-      where: { role: "USER", joinStatus: "REJECTED", residentApartmentId: apartmentId },
+      where: { role: "USER", joinStatus: "REJECTED", resident: { apartmentId } },
     });
   };
 }
